@@ -1,12 +1,13 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
+import ImageEditor from './src/components/image-editor/ImageEditor';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={{flex:1}}>
+      <View style={styles.container}>
+        <ImageEditor imageUrl={'https://media.istockphoto.com/id/532966784/photo/bright-orange-flowers-of-geum-coccineum.jpg?s=612x612&w=0&k=20&c=DLG4hlbZ-XyW8VtktZaB-sWCElO3TPPyDVfC5B557mk='}></ImageEditor>
+      </View>
+    </SafeAreaView>
   );
 }
 
