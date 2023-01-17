@@ -10,21 +10,35 @@ type IProps = {
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const { imageUrl } = props;
-    const { width, height } = Dimensions.get('screen')
+    const { width: screenWidth, height: screenHeight } = Dimensions.get('screen')
     const ref = useCanvasRef();
     const [imageCanvas,setImageCanvas] = useState();
     const [dimensions, setDimensions] = useState({
         imageHeight: 1,
         imageWidth: 1,
-        statusbarHeight: 42,
+        statusbarHeight: 0,
+        scaleFactor: {scaleHeight: 1, scaleWidth: 1},
     })
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             console.log(`The image dimensions are ${width}x${height}`);
-            setDimensions(state =>({
+            let scaleFactor = {scaleHeight: 1, scaleWidth: 1};
+            if(height> width) {
+                scaleFactor = {
+                    ...scaleFactor,
+                    scaleHeight:screenHeight/height
+                }
+            } else {
+                scaleFactor = {
+                    ...scaleFactor,
+                    scaleWidth:screenWidth/width
+                }
+            }
+            setDimensions(state => ({
                 imageHeight: height,
                 imageWidth: width,
-                statusbarHeight: StatusBar.currentHeight as number
+                statusbarHeight: StatusBar.currentHeight as number,
+                scaleFactor: scaleFactor
             }))
         }, (error) => {
             console.error(`Couldn't get the image size: ${error.message}`);
@@ -44,17 +58,17 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         <View style={styles.wrapper}>
             <PanZoom>
                 <Canvas style={{ 
-                    width: width, 
-                    height: height, 
+                    width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
+                    height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight, 
                 }} ref={ref}>
                     { imageCanvas && 
                         <Image
                         image={imageCanvas}
-                        fit="scaleDown"
+                        fit="contain"
                         x={0}
-                        y={dimensions.statusbarHeight}
-                        width={width}
-                        height={dimensions.imageHeight*width/dimensions.imageWidth}
+                        y={0}
+                        width={dimensions.imageWidth*dimensions.scaleFactor.scaleWidth}
+                        height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
                 </Canvas>

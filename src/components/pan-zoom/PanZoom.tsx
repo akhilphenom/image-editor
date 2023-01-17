@@ -1,4 +1,4 @@
-import { StyleProp, StyleSheet, View } from 'react-native'
+import { StatusBar, StyleProp, StyleSheet, View } from 'react-native'
 import React, { useCallback, useMemo } from 'react';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ type IProps = {
 }
 
 const PanZoom = (props: IProps) => {
+    const statusBarHeight = StatusBar.currentHeight as number
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
     const baseScale = useSharedValue(1);
@@ -26,7 +27,7 @@ const PanZoom = (props: IProps) => {
     const getContentContainerSize = useCallback(() => {
         return ({
           width: containerDimensions.value.width,
-          height: contentDimensions.value.height * containerDimensions.value.width / contentDimensions.value.width,
+          height: (contentDimensions.value.height-statusBarHeight*lastScale.value) * containerDimensions.value.width / contentDimensions.value.width,
         })
     }, [])
 
@@ -77,6 +78,7 @@ const PanZoom = (props: IProps) => {
         }
         const isPanedYOutside = previousTranslateY.value > maxOffset.y || previousTranslateY.value < -maxOffset.y
         if (isPanedYOutside) {
+            console.log(maxOffset)
             const newOffsetY = previousTranslateY.value >= 0 ? maxOffset.y : -maxOffset.y
             previousTranslateY.value = newOffsetY
             currentTranslateY.value = withSpring(newOffsetY, {damping: 40, stiffness: 400})
