@@ -37,7 +37,7 @@ const PanZoom = (props: IProps) => {
         if (newScale < 1.4) {
             newScale = 1.4
         } else if (newScale > 1.5) {
-            newScale = 1.5
+            newScale = 2
         }
         lastScale.value = newScale
         baseScale.value = withSpring(newScale)
@@ -78,7 +78,6 @@ const PanZoom = (props: IProps) => {
         }
         const isPanedYOutside = previousTranslateY.value > maxOffset.y || previousTranslateY.value < -maxOffset.y
         if (isPanedYOutside) {
-            console.log(maxOffset)
             const newOffsetY = previousTranslateY.value >= 0 ? maxOffset.y : -maxOffset.y
             previousTranslateY.value = newOffsetY
             currentTranslateY.value = withSpring(newOffsetY, {damping: 40, stiffness: 400})

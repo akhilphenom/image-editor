@@ -81,7 +81,7 @@ export default ImageEditor
 
 const styles = StyleSheet.create({
     wrapper: {
-        flex: 1,
-        backgroundColor: 'rgb(15,15,15)',
+        flex: 1.5,
+        zIndex: 900,
     }
 })
