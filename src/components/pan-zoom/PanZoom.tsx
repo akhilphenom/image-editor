@@ -43,6 +43,7 @@ const PanZoom = (props: IProps) => {
             path = `M ${x} ${y}${path}`
         }
         setPathString(path);
+        props.getPaths([...paths, pathString]);
     }
 
     const getContentContainerSize = useCallback(() => {
@@ -137,16 +138,17 @@ const PanZoom = (props: IProps) => {
             pinchScale.value = scale;
             runOnJS(onPinchEnd)(scale)
         });
-        const panGesture = Gesture.Pan().onStart(({x,y})=>{
+        const panGesture = Gesture.Pan().onStart((e)=>{
             if(!enable) {
-                runOnJS(createPath)(x,y,true);
+                console.log(e);
+                runOnJS(createPath)(e.x,e.y,true);
             }
         }).onUpdate(({translationX, translationY, x, y})=>{
             if(enable) {
                 currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
                 currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
             } else {
-                runOnJS(createPath)(x,y,false);
+                runOnJS(createPath)(x/lastScale.value,x/lastScale.value,false);
             }
         }).onEnd(({translationX, translationY, x, y})=>{
             if(enable) {
@@ -154,11 +156,10 @@ const PanZoom = (props: IProps) => {
                 previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
                 runOnJS(onPanEnd)()
             } else {
-                runOnJS(createPath)(x,y, false);
+                runOnJS(createPath)(x/lastScale.value,y/lastScale.value, false);
                 const oldPaths = [...paths];
                 oldPaths.push(pathString)
                 runOnJS(setPaths)(oldPaths);
-                console.log(paths)
                 runOnJS(setPathString)('');
             }
         }).onTouchesMove((_, state) => {

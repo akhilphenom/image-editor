@@ -20,10 +20,10 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         statusbarHeight: 0,
         scaleFactor: {scaleHeight: 1, scaleWidth: 1},
     });
-    const [paths, setPaths] = useState<SkPath[]>([]);
-    const getPaths = (paths: SkPath[])=>{
-        setPaths(paths);
-        // console.log(paths);
+    const paths: any = useRef();
+    const getPaths = (allPaths: string[])=>{
+        paths.current = allPaths;
+        console.log(paths.current);
     };
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
@@ -40,6 +40,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     scaleWidth:screenWidth/width
                 }
             }
+            console.log(scaleFactor)
             setDimensions(state => ({
                 imageHeight: height,
                 imageWidth: width,
@@ -64,7 +65,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         <View style={styles.wrapper}>
             <PanZoom 
             enable={props.enablePanZoom} 
-            getPaths={(e: SkPath[]) => getPaths(e)}
+            getPaths={(e: string[]) => getPaths(e)}
             >
                 <Canvas style={{ 
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
@@ -80,14 +81,27 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
-                    <Path
+                    { paths?.current?.length &&
+                        paths.current.map((path: string,i: number) => (<>
+                            <Path
+                                key={i}
+                                path={'M 139 139 L 139 139 L 148 148 L 156 156 L 164 164 L 175 175 L 186 186 L 194 194 L 202 202 L 207 207 L 209 209 L 213 213 L 214 214 L 215 215 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216'}
+                                color="white"
+                                style={'stroke'}
+                                strokeWidth={5}
+                                strokeJoin={'round'}
+                                antiAlias={true}
+                            />        
+                        </>))
+                    }
+                    {/* <Path
                         path="M 128 0 L 168 80 L 256 93 L 192 155 L 207 244 L 128 202 L 49 244 L 64 155 L 0 93"
                         color="lightblue"
                         style={'stroke'}
                         strokeWidth={10}
                         strokeJoin={'round'}
                         antiAlias={true}
-                    />
+                    /> */}
                 </Canvas>
             </PanZoom>
         </View>
@@ -98,7 +112,8 @@ export default ImageEditor
 
 const styles = StyleSheet.create({
     wrapper: {
-        flex: 1.5,
-        zIndex: 900,
+        flex: 1,
+        borderWidth:2,
+        borderColor: 'red'
     }
 })

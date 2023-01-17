@@ -45,7 +45,9 @@ const MainScreen = () => {
                     <Ionicons name="save-sharp" size={24} color="white" />
                 </TouchableOpacity>
             </View>
+            <View style={{flex:1}}></View>
             <ImageEditor imageUrl={imageUrl} enablePanZoom={activeAction.palm}></ImageEditor>
+            <View style={{flex:1}}></View>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
