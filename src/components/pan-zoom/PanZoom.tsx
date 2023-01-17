@@ -1,17 +1,20 @@
 import { StatusBar, StyleProp, StyleSheet, View } from 'react-native'
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { NativeEvent } from 'react-native-reanimated/lib/types/lib/reanimated2/commonTypes';
+import { Skia, Path, SkPath } from '@shopify/react-native-skia';
 
 type IProps = {
+    enable: boolean,
     style?: StyleProp<any>,
     contentContainerStyle?: StyleProp<any>,
-    children?:any
+    children?:any,
+    getPaths: Function
 }
 
 const PanZoom = (props: IProps) => {
-    const statusBarHeight = StatusBar.currentHeight as number
+    const [paths, setPaths] = useState<string[]>([]);
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
     const baseScale = useSharedValue(1);
@@ -23,11 +26,29 @@ const PanZoom = (props: IProps) => {
     const contentDimensions = useSharedValue({ width: 1, height: 1 })
     const isZoomedIn = useSharedValue(false)
     const isPanGestureEnabled = useSharedValue(false);
+    const [enable, setEnable] = useState(true);
+    const [pathString, setPathString] = useState<string>('');
+
+    const createPath = (x: number, y:number, isFirst: boolean) => {
+        if(isFirst) {
+            setPath(`M ${Math.round(x)} ${Math.round(y)}`);
+        } else {
+            setPath(pathString+` L ${Math.round(x)} ${Math.round(y)}`)
+        }
+    }
+
+    const setPath = (path: string) => {
+        if(path.startsWith(' ')) {
+            const [x, y] = (path as any).match(/\d+/g).slice(0, 2);
+            path = `M ${x} ${y}${path}`
+        }
+        setPathString(path);
+    }
 
     const getContentContainerSize = useCallback(() => {
         return ({
           width: containerDimensions.value.width,
-          height: (contentDimensions.value.height-statusBarHeight*lastScale.value) * containerDimensions.value.width / contentDimensions.value.width,
+          height: (contentDimensions.value.height) * containerDimensions.value.width / contentDimensions.value.width,
         })
     }, [])
 
@@ -116,13 +137,30 @@ const PanZoom = (props: IProps) => {
             pinchScale.value = scale;
             runOnJS(onPinchEnd)(scale)
         });
-        const panGesture = Gesture.Pan().onUpdate(({translationX, translationY})=>{
-            currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
-            currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
-        }).onEnd(({translationX, translationY})=>{
-            previousTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
-            previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
-            runOnJS(onPanEnd)()
+        const panGesture = Gesture.Pan().onStart(({x,y})=>{
+            if(!enable) {
+                runOnJS(createPath)(x,y,true);
+            }
+        }).onUpdate(({translationX, translationY, x, y})=>{
+            if(enable) {
+                currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
+                currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
+            } else {
+                runOnJS(createPath)(x,y,false);
+            }
+        }).onEnd(({translationX, translationY, x, y})=>{
+            if(enable) {
+                previousTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
+                previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
+                runOnJS(onPanEnd)()
+            } else {
+                runOnJS(createPath)(x,y, false);
+                const oldPaths = [...paths];
+                oldPaths.push(pathString)
+                runOnJS(setPaths)(oldPaths);
+                console.log(paths)
+                runOnJS(setPathString)('');
+            }
         }).onTouchesMove((_, state) => {
             if (isPanGestureEnabled.value) {
                 state.activate()
@@ -134,7 +172,7 @@ const PanZoom = (props: IProps) => {
             runOnJS(onDoubleTap)()
         })
         return Gesture.Simultaneous(tapGesture,pinchGesture, panGesture)
-    },[currentTranslateX, previousTranslateX, currentTranslateY, previousTranslateY, pinchScale, baseScale, lastScale]);
+    },[currentTranslateX, previousTranslateX, currentTranslateY, previousTranslateY, pinchScale, baseScale, lastScale, enable, paths, pathString]);
 
     const translateStyle = useAnimatedStyle(() => ({
         transform: [
@@ -158,9 +196,16 @@ const PanZoom = (props: IProps) => {
         }
     }, [])
 
+    useEffect(()=>{
+        setEnable(props.enable)
+    },[props.enable])
+
     return (
         <GestureHandlerRootView style={{flex:1}}>
-            <GestureDetector gesture={panZoomGestures}>
+            <GestureDetector gesture={
+                // Gesture.Simultaneous(tapGesture,pinchGesture, panGesture)
+                panZoomGestures
+            }>
                 <View
                 style={[styles.container, props.style]}
                 onLayout={onLayout}

@@ -2,10 +2,11 @@ import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react
 import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react'
 import Animated from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
-import { Canvas, Circle, useCanvasRef, useImage, Image, Skia } from '@shopify/react-native-skia';
+import { Canvas, Circle, useCanvasRef, useImage, Image, Skia, SkPath, Path } from '@shopify/react-native-skia';
 
 type IProps = {
     imageUrl: string,
+    enablePanZoom: boolean
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
@@ -18,7 +19,12 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         imageWidth: 1,
         statusbarHeight: 0,
         scaleFactor: {scaleHeight: 1, scaleWidth: 1},
-    })
+    });
+    const [paths, setPaths] = useState<SkPath[]>([]);
+    const getPaths = (paths: SkPath[])=>{
+        setPaths(paths);
+        // console.log(paths);
+    };
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             console.log(`The image dimensions are ${width}x${height}`);
@@ -56,7 +62,10 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     },[imageCanvas])
     return (
         <View style={styles.wrapper}>
-            <PanZoom>
+            <PanZoom 
+            enable={props.enablePanZoom} 
+            getPaths={(e: SkPath[]) => getPaths(e)}
+            >
                 <Canvas style={{ 
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
                     height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight, 
@@ -71,6 +80,14 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
+                    <Path
+                        path="M 128 0 L 168 80 L 256 93 L 192 155 L 207 244 L 128 202 L 49 244 L 64 155 L 0 93"
+                        color="lightblue"
+                        style={'stroke'}
+                        strokeWidth={10}
+                        strokeJoin={'round'}
+                        antiAlias={true}
+                    />
                 </Canvas>
             </PanZoom>
         </View>
