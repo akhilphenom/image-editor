@@ -21,7 +21,6 @@
     "react-native-reanimated": "2.9.1",
     "react-native-uuid": "^2.0.1",
     "react-native-web": "~0.18.7",
-    "rn-perfect-sketch-canvas": "^0.3.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

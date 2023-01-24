@@ -1,9 +1,8 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react-native'
-import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react'
-import { runOnJS, runOnUI, useSharedValue } from 'react-native-reanimated'
+import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
+import { runOnJS } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
-import { Canvas, Circle, useCanvasRef, useImage, Image, Skia, SkPath, Path, useTouchHandler } from '@shopify/react-native-skia';
-import { SketchCanvas, SketchCanvasRef } from 'rn-perfect-sketch-canvas';
+import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler } from '@shopify/react-native-skia';
 import uuid from 'react-native-uuid';
 
 type IProps = {
@@ -22,7 +21,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         statusbarHeight: 0,
         scaleFactor: {scaleHeight: 1, scaleWidth: 1},
     });
-    const [paths, setPaths] = useState<string[]>([]);
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
     const [pathString, setPathString] = useState<string>('');
