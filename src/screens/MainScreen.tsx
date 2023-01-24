@@ -54,14 +54,14 @@ const MainScreen = () => {
                 setActiveAction((actions: any) => ({
                     ...actions,
                     save: false,
-                    redo: true
+                    redo: !activeAction.redo
                 }))
                 break;
             case ActionType.CLEAR :
                 setActiveAction((actions: any) => ({
                     ...actions,
                     save: false,
-                    clear: true
+                    clear: !activeAction.clear
                 }))
                 break;
             case ActionType.SAVE :
@@ -81,6 +81,12 @@ const MainScreen = () => {
                 <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.CLEAR)}>
                     <FontAwesome5 name="eraser" size={26} color="white" />
                 </TouchableOpacity>
+                <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.UNDO)}>
+                    <MaterialCommunityIcons name="undo" size={28} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.REDO)}>
+                    <MaterialCommunityIcons name="redo" size={26} color="white" />
+                </TouchableOpacity>
                 <TouchableOpacity style={[styles.btnStyles,{backgroundColor: 'dodgerblue'}]} onPress={() => handleAction(ActionType.SAVE)}>
                     <Ionicons name="save-sharp" size={24} color="white" />
                 </TouchableOpacity>
@@ -90,6 +96,8 @@ const MainScreen = () => {
             enablePanZoom={activeAction.palm} 
             save={activeAction.save}
             clear={activeAction.clear}
+            undo={activeAction.undo}
+            redo={activeAction.redo}
             getFinalImage={getFinalImage}
             ></ImageEditor>
             <View style={styles.bar}>
