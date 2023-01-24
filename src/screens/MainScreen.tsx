@@ -14,7 +14,7 @@ const MainScreen = () => {
         palm: true,
         draw: false,
     })
-    const handleAction = useCallback((context?: ActionType)=>{
+    const handleAction = (context?: ActionType)=>{
         switch(context) {
             case ActionType.DRAW :
                 setActiveAction(actions => ({
@@ -33,7 +33,7 @@ const MainScreen = () => {
             default:
                 break;
         }
-    },[])
+    };
     return (<>
         <StatusBar style='light' hidden={true}></StatusBar>
         <View style={styles.mainContainer}>
@@ -45,9 +45,7 @@ const MainScreen = () => {
                     <Ionicons name="save-sharp" size={24} color="white" />
                 </TouchableOpacity>
             </View>
-            <View style={{flex:1}}></View>
             <ImageEditor imageUrl={imageUrl} enablePanZoom={activeAction.palm}></ImageEditor>
-            <View style={{flex:1}}></View>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
@@ -67,7 +65,7 @@ export default MainScreen
 const styles = StyleSheet.create({
     mainContainer: {
         flex:1,
-        backgroundColor: 'rgb(15,15,15)',
+        backgroundColor: 'white',
     },
     bar: {
         width: '100%',

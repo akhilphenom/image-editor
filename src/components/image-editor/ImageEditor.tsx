@@ -1,8 +1,10 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react-native'
 import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react'
-import Animated from 'react-native-reanimated'
+import { runOnJS, useSharedValue } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
-import { Canvas, Circle, useCanvasRef, useImage, Image, Skia, SkPath, Path } from '@shopify/react-native-skia';
+import { Canvas, Circle, useCanvasRef, useImage, Image, Skia, SkPath, Path, useTouchHandler } from '@shopify/react-native-skia';
+import { SketchCanvas, SketchCanvasRef } from 'rn-perfect-sketch-canvas';
+import uuid from 'react-native-uuid';
 
 type IProps = {
     imageUrl: string,
@@ -13,6 +15,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const { imageUrl } = props;
     const { width: screenWidth, height: screenHeight } = Dimensions.get('screen')
     const ref = useCanvasRef();
+    const canvasRef = useRef<SketchCanvasRef>(null);
     const [imageCanvas,setImageCanvas] = useState();
     const [dimensions, setDimensions] = useState({
         imageHeight: 1,
@@ -20,11 +23,33 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         statusbarHeight: 0,
         scaleFactor: {scaleHeight: 1, scaleWidth: 1},
     });
-    const paths: any = useRef();
+    const [paths, setPaths] = useState<string[]>([]);
+    const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const getPaths = (allPaths: string[])=>{
-        paths.current = allPaths;
-        console.log(paths.current);
+        setPaths(allPaths);
+        console.log(paths);
     };
+    const [enable, setEnable] = useState(props.enablePanZoom);
+    const [pathString, setPathString] = useState<string>('');
+    const panEnabled = useSharedValue(props.enablePanZoom);
+
+    const createPath = (x: number, y:number, isFirst: boolean) => {
+        if(isFirst) {
+            setPath(`M ${Math.round(x)} ${Math.round(y)}`);
+        } else {
+            setPath(pathString+` L ${Math.round(x)} ${Math.round(y)}`)
+        }
+    }
+
+    const setPath = useCallback((path: string) => {
+        setPathString(state => state+path);
+    },[pathString])
+    useEffect(()=>{
+        setPaths([...paths, pathString]);
+    },[pathString])
+    useEffect(()=>{
+        setEnable(props.enablePanZoom)
+    },[props.enablePanZoom])
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             console.log(`The image dimensions are ${width}x${height}`);
@@ -40,7 +65,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     scaleWidth:screenWidth/width
                 }
             }
-            console.log(scaleFactor)
             setDimensions(state => ({
                 imageHeight: height,
                 imageWidth: width,
@@ -51,6 +75,16 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             console.error(`Couldn't get the image size: ${error.message}`);
         });
     },[imageCanvas])
+    
+    const touchHandler = useCallback(useTouchHandler({
+        onStart: ({x,y}) => {
+            runOnJS(createPath)(x,y,true);
+            console.log(x,y)
+        },
+        onActive: ({x,y}) => {
+            runOnJS(createPath)(x,y,false);
+        },
+    }),[])
     useEffect(()=>{
         Skia.Data.fromURI(imageUrl).then((data) => {
             const canvasImage: any = Skia.Image.MakeImageFromEncoded(data)
@@ -61,18 +95,31 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     useEffect(()=>{
         getImageSize(imageUrl);
     },[imageCanvas])
+    const changeEnableState = (value: boolean) => {
+        'worklet';
+        panEnabled.value = value
+    }
+
+    useEffect(()=>{
+        changeEnableState(props.enablePanZoom)
+    },[props.enablePanZoom])
     return (
         <View style={styles.wrapper}>
             <PanZoom 
-            enable={props.enablePanZoom} 
+            enable={true} 
             getPaths={(e: string[]) => getPaths(e)}
             >
-                <Canvas style={{ 
+                <Canvas
+                onTouch={
+                    touchHandler
+                }
+                style={{ 
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
                     height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight, 
                 }} ref={ref}>
                     { imageCanvas && 
                         <Image
+                        key={'image'}
                         image={imageCanvas}
                         fit="contain"
                         x={0}
@@ -81,11 +128,11 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
-                    { paths?.current?.length &&
-                        paths.current.map((path: string,i: number) => (<>
+                    { completedPaths.length>0 &&
+                        completedPaths.map((path: any,i: number) => (<>
                             <Path
-                                key={i}
-                                path={'M 139 139 L 139 139 L 148 148 L 156 156 L 164 164 L 175 175 L 186 186 L 194 194 L 202 202 L 207 207 L 209 209 L 213 213 L 214 214 L 215 215 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216 L 216 216'}
+                                key={uuid.v4() as string}
+                                path={path}
                                 color="white"
                                 style={'stroke'}
                                 strokeWidth={5}
@@ -94,14 +141,19 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                             />        
                         </>))
                     }
-                    {/* <Path
-                        path="M 128 0 L 168 80 L 256 93 L 192 155 L 207 244 L 128 202 L 49 244 L 64 155 L 0 93"
-                        color="lightblue"
-                        style={'stroke'}
-                        strokeWidth={10}
-                        strokeJoin={'round'}
-                        antiAlias={true}
-                    /> */}
+                    {
+                        pathString ?
+                        <Path
+                            key={uuid.v4() as string}
+                            path={pathString}
+                            color="white"
+                            style={'stroke'}
+                            strokeWidth={5}
+                            strokeJoin={'round'}
+                            antiAlias={true}
+                        />      
+                        : null  
+                    }
                 </Canvas>
             </PanZoom>
         </View>
