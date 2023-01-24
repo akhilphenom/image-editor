@@ -65,7 +65,7 @@ export default MainScreen
 const styles = StyleSheet.create({
     mainContainer: {
         flex:1,
-        backgroundColor: 'white',
+        backgroundColor: 'rgb(15,15,15)',
     },
     bar: {
         width: '100%',

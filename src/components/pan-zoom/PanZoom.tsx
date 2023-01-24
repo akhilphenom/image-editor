@@ -1,7 +1,7 @@
 import { StatusBar, StyleProp, StyleSheet, View } from 'react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedRef, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, runOnUI, useAnimatedRef, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { NativeEvent } from 'react-native-reanimated/lib/types/lib/reanimated2/commonTypes';
 import { Skia, Path, SkPath } from '@shopify/react-native-skia';
 
@@ -10,11 +10,9 @@ type IProps = {
     style?: StyleProp<any>,
     contentContainerStyle?: StyleProp<any>,
     children?:any,
-    getPaths: Function
 }
 
 const PanZoom = (props: IProps) => {
-    const [paths, setPaths] = useState<string[]>([]);
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
     const baseScale = useSharedValue(1);
@@ -27,7 +25,6 @@ const PanZoom = (props: IProps) => {
     const isZoomedIn = useSharedValue(false)
     const isPanGestureEnabled = useSharedValue(false);
     const [enable, setEnable] = useState(true);
-    const panEnabled = useSharedValue(props.enable);
 
     const getContentContainerSize = useCallback(() => {
         return ({
@@ -114,14 +111,14 @@ const PanZoom = (props: IProps) => {
     },[baseScale, pinchScale, lastScale, onPanEnd])
 
     const panZoomGestures = useMemo(() => {
-        const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {
+        const pinchGesture = Gesture.Pinch().enabled(enable).onUpdate(({ scale }) => {
             pinchScale.value = scale
             isPanGestureEnabled.value = true
         }).onEnd(({ scale }) => {
             pinchScale.value = scale;
             runOnJS(onPinchEnd)(scale)
-        }).enabled(panEnabled.value);
-        const panGesture = Gesture.Pan().onUpdate(({translationX, translationY, x, y})=>{
+        });
+        const panGesture = Gesture.Pan().enabled(enable).onUpdate(({translationX, translationY, x, y})=>{
             currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
             currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
         }).onEnd(({translationX, translationY, x, y})=>{
@@ -129,17 +126,17 @@ const PanZoom = (props: IProps) => {
             previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
             runOnJS(onPanEnd)()
         }).onTouchesMove((_, state) => {
-            if (isPanGestureEnabled.value) {
+            if (!enable || isPanGestureEnabled.value) {
                 state.activate()
             } else {
                 state.fail()
             }
-        }).minDistance(0).minPointers(1).maxPointers(2).enabled(panEnabled.value);
-        const tapGesture = Gesture.Tap().numberOfTaps(2).onEnd(() => {
+        }).minDistance(0).minPointers(1).maxPointers(2);
+        const tapGesture = Gesture.Tap().enabled(enable).numberOfTaps(2).onEnd(() => {
             runOnJS(onDoubleTap)()
-        }).enabled(panEnabled.value)
+        });
         return Gesture.Simultaneous(tapGesture,pinchGesture, panGesture)
-    },[currentTranslateX, previousTranslateX, currentTranslateY, previousTranslateY, pinchScale, baseScale, lastScale, panEnabled, paths]);
+    },[currentTranslateX, previousTranslateX, currentTranslateY, previousTranslateY, pinchScale, baseScale, lastScale, enable]);
 
     const translateStyle = useAnimatedStyle(() => ({
         transform: [
@@ -164,12 +161,11 @@ const PanZoom = (props: IProps) => {
     }, [])
 
     const changeEnableState = (value: boolean) => {
-        'worklet';
-        panEnabled.value = value
+        setEnable(value)
     }
 
     useEffect(()=>{
-        changeEnableState(props.enable)
+        runOnUI(changeEnableState)(props.enable)
     },[props.enable])
 
     return (
