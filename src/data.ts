@@ -1,0 +1,1 @@
+export const imageUrl = 'https://static.vecteezy.com/packs/media/vectors/term-bg-1-3d6355ab.jpg'
