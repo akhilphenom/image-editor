@@ -31,12 +31,20 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
     const [pathString, setPathString] = useState<string>('');
+    const currentPath: any = useRef('');
+    const currentPaths: any = useRef([]);
+    const undoStack: any = useRef([]);
 
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
             setPath(`M ${Math.round(x)} ${Math.round(y)}`);
         } else if (isLast) {
-            setCompletedPaths(state => [...completedPaths, pathString]);
+            if(currentPath.current.length) {
+                setCompletedPaths(state => [...state, currentPath.current]);
+                currentPaths.current = [...currentPaths.current, currentPath.current];
+                setPathString('');
+                currentPath.current = '';
+            }
         } else {
             setPath(pathString+` L ${Math.round(x)} ${Math.round(y)}`)
         }
@@ -44,6 +52,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
 
     const setPath = useCallback((path: string) => {
         setPathString(state => state+path);
+        currentPath.current = currentPath.current+path;
     },[pathString])
 
     useEffect(()=>{
@@ -51,8 +60,26 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     },[props.enablePanZoom])
     
     useEffect(()=>{
-        setPathString('')
+        setCompletedPaths(state => [])
     },[props.clear])
+
+    useEffect(()=>{
+        const oldPaths = [...currentPaths.current];
+        if(oldPaths.length) {
+            const latestPath = oldPaths.pop();
+            currentPaths.current.pop();
+            undoStack.current.push(latestPath);
+            setCompletedPaths(state => [...oldPaths])
+        }
+    },[props.undo])
+
+    useEffect(()=>{
+        if(undoStack.current.length) {
+            const latestPath = undoStack.current.pop();
+            currentPaths.current.push(latestPath);
+            setCompletedPaths(state => [...state, latestPath])
+        }
+    },[props.redo])
 
     useEffect(()=>{
         if(props.save) {
@@ -98,13 +125,15 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
 
     const touchHandler = useCallback(useTouchHandler({
         onStart: ({x,y}) => {
-            runOnUI(createPath)(x,y,true,false);
+            runOnJS(createPath)(x,y,true,false);
         },
-        onActive: ({x,y}) => {
-            runOnUI(createPath)(x,y,false,false);
+        onActive: ({x,y,velocityX,velocityY}) => {
+            if(velocityX || velocityY) {
+                runOnJS(createPath)(x,y,false,false);
+            }
         },
         onEnd: ({x,y}) => {
-            runOnUI(createPath)(x,y,false,true);
+            runOnJS(createPath)(x,y,false,true);
         }
     }),[props.enablePanZoom])
     useEffect(()=>{
@@ -146,10 +175,23 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
+                    { completedPaths.length>0 &&
+                        completedPaths.map((path: any,i: number) => (<>
+                            <Path
+                                key={i}
+                                path={path}
+                                color="white"
+                                style={'stroke'}
+                                strokeWidth={5}
+                                strokeJoin={'round'}
+                                antiAlias={true}
+                            />        
+                        </>))
+                    }
                     {
                         pathString ?
                         <Path
-                            key={uuid.v4() as string}
+                            key={'currentPath'}
                             path={pathString}
                             color="red"
                             style={'stroke'}
