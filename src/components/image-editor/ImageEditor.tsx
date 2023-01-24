@@ -1,13 +1,15 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react-native'
-import React, { FunctionComponent, useCallback, useEffect, useState } from 'react'
-import { runOnJS } from 'react-native-reanimated'
+import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react'
+import { runOnJS, runOnUI } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler } from '@shopify/react-native-skia';
 import uuid from 'react-native-uuid';
 
 type IProps = {
     imageUrl: string,
-    enablePanZoom: boolean
+    enablePanZoom: boolean,
+    undo?: boolean,
+    redo?: boolean,
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
@@ -24,12 +26,20 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
     const [pathString, setPathString] = useState<string>('');
+    const drawStarted: any= useRef();
+    const currentPaths: any= useRef([]);
 
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
             setPath(`M ${Math.round(x)} ${Math.round(y)}`);
+            drawStarted.current = true;
         } else if (isLast) {
-            setCompletedPaths([...completedPaths, pathString])
+            setCompletedPaths(state => [...completedPaths, pathString]);
+            if(currentPaths.current) {
+                currentPaths.current = [];
+            }
+            currentPaths.current.push(pathString);
+            drawStarted.current = false;
         } else {
             setPath(pathString+` L ${Math.round(x)} ${Math.round(y)}`)
         }
@@ -42,6 +52,11 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     useEffect(()=>{
         setEnable(props.enablePanZoom)
     },[props.enablePanZoom])
+    useEffect(()=>{
+        setPathString('')
+    },[props.undo])
+    useEffect(()=>{
+    },[currentPaths.current])
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             let scaleFactor = {scaleHeight: 1, scaleWidth: 1};
@@ -69,13 +84,13 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     
     const touchHandler = useCallback(useTouchHandler({
         onStart: ({x,y}) => {
-            runOnJS(createPath)(x,y,true,false);
+            runOnUI(createPath)(x,y,true,false);
         },
         onActive: ({x,y}) => {
-            runOnJS(createPath)(x,y,false,false);
+            runOnUI(createPath)(x,y,false,false);
         },
         onEnd: ({x,y}) => {
-            runOnJS(createPath)(x,y,false,true);
+            runOnUI(createPath)(x,y,false,true);
         }
     }),[props.enablePanZoom])
     useEffect(()=>{

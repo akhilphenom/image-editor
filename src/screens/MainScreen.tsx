@@ -8,26 +8,42 @@ import { StatusBar } from 'expo-status-bar'
 enum ActionType {
     PALM = 'PALM',
     DRAW = 'DRAW',
+    UNDO = 'UNDO',
+    REDO = 'REDO',
 }
 const MainScreen = () => {
-    const [activeAction, setActiveAction] = useState({
+    const [activeAction, setActiveAction] = useState<any>({
         palm: true,
         draw: false,
+        undo: null,
+        redo: null
     })
     const handleAction = (context?: ActionType)=>{
         switch(context) {
             case ActionType.DRAW :
-                setActiveAction(actions => ({
+                setActiveAction((actions: any) => ({
                     ...actions,
                     palm: false,
                     draw: true
                 }))
                 break;
             case ActionType.PALM :
-                setActiveAction(actions => ({
+                setActiveAction((actions: any) => ({
                     ...actions,
                     palm: true,
                     draw: false
+                }))
+                break;
+            case ActionType.UNDO :
+                setActiveAction((actions: any) => ({
+                    ...actions,
+                    undo: !activeAction.undo,
+                }))
+                break;
+            case ActionType.REDO :
+                setActiveAction((actions: any) => ({
+                    ...actions,
+                    redo: true
                 }))
                 break;
             default:
@@ -38,14 +54,14 @@ const MainScreen = () => {
         <StatusBar style='light' hidden={true}></StatusBar>
         <View style={styles.mainContainer}>
             <View style={styles.bar}>
-                <TouchableOpacity style={[styles.btnStyles]}>
+                <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.UNDO)}>
                     <MaterialIcons name="replay" size={28} color="white" />
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.btnStyles,{backgroundColor: 'dodgerblue'}]}>
                     <Ionicons name="save-sharp" size={24} color="white" />
                 </TouchableOpacity>
             </View>
-            <ImageEditor imageUrl={imageUrl} enablePanZoom={activeAction.palm}></ImageEditor>
+            <ImageEditor imageUrl={imageUrl} enablePanZoom={activeAction.palm} undo={activeAction.undo}></ImageEditor>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
