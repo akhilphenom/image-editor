@@ -1,29 +1,51 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native'
-import React, { useCallback, useState } from 'react'
+import { Alert, Share, StyleSheet, TouchableOpacity, View } from 'react-native'
+import React, { useState } from 'react'
 import { imageUrl } from '../data'
 import ImageEditor from '../components/image-editor/ImageEditor'
-import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar'
+
 
 enum ActionType {
     PALM = 'PALM',
     DRAW = 'DRAW',
     UNDO = 'UNDO',
     REDO = 'REDO',
+    CLEAR = 'CLEAR',
+    SAVE = 'SAVE',
 }
 const MainScreen = () => {
     const [activeAction, setActiveAction] = useState<any>({
         palm: true,
         draw: false,
         undo: null,
-        redo: null
-    })
+        redo: null,
+        clear: null,
+        save: null,
+    });
+    const [exportedImage, setExportedImage] = useState<string>('');
+    const getBase64 = async (base64:string) => {
+        base64 = `data:image/png;base64,${base64}`
+        setExportedImage(base64);
+        try {
+            const result = await Share.share({
+                message: 'React Native | A framework for building native apps using React',
+            });
+        if (result.action === Share.sharedAction) {
+            if (result.activityType) { } else { }
+        } else if (result.action === Share.dismissedAction) { }
+        } catch (error: any) {
+            Alert.alert(error.message);
+        }
+      
+    }
     const handleAction = (context?: ActionType)=>{
         switch(context) {
             case ActionType.DRAW :
                 setActiveAction((actions: any) => ({
                     ...actions,
                     palm: false,
+                    save: false,
                     draw: true
                 }))
                 break;
@@ -31,19 +53,35 @@ const MainScreen = () => {
                 setActiveAction((actions: any) => ({
                     ...actions,
                     palm: true,
+                    save: false,
                     draw: false
                 }))
                 break;
             case ActionType.UNDO :
                 setActiveAction((actions: any) => ({
                     ...actions,
+                    save: false,
                     undo: !activeAction.undo,
                 }))
                 break;
             case ActionType.REDO :
                 setActiveAction((actions: any) => ({
                     ...actions,
+                    save: false,
                     redo: true
+                }))
+                break;
+            case ActionType.CLEAR :
+                setActiveAction((actions: any) => ({
+                    ...actions,
+                    save: false,
+                    clear: true
+                }))
+                break;
+            case ActionType.SAVE :
+                setActiveAction((actions: any) => ({
+                    ...actions,
+                    save: true
                 }))
                 break;
             default:
@@ -54,14 +92,20 @@ const MainScreen = () => {
         <StatusBar style='light' hidden={true}></StatusBar>
         <View style={styles.mainContainer}>
             <View style={styles.bar}>
-                <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.UNDO)}>
-                    <MaterialIcons name="replay" size={28} color="white" />
+                <TouchableOpacity style={[styles.btnStyles]} onPress={() => handleAction(ActionType.CLEAR)}>
+                    <FontAwesome5 name="eraser" size={26} color="white" />
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.btnStyles,{backgroundColor: 'dodgerblue'}]}>
+                <TouchableOpacity style={[styles.btnStyles,{backgroundColor: 'dodgerblue'}]} onPress={() => handleAction(ActionType.SAVE)}>
                     <Ionicons name="save-sharp" size={24} color="white" />
                 </TouchableOpacity>
             </View>
-            <ImageEditor imageUrl={imageUrl} enablePanZoom={activeAction.palm} undo={activeAction.undo}></ImageEditor>
+            <ImageEditor 
+            imageUrl={ exportedImage.length>0 ? exportedImage : imageUrl} 
+            enablePanZoom={activeAction.palm} 
+            save={activeAction.save}
+            clear={activeAction.clear}
+            getBase64={getBase64}
+            ></ImageEditor>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>

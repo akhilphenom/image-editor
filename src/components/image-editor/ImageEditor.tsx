@@ -10,6 +10,9 @@ type IProps = {
     enablePanZoom: boolean,
     undo?: boolean,
     redo?: boolean,
+    clear?: boolean,
+    save?: boolean,
+    getBase64: Function
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
@@ -26,20 +29,12 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
     const [pathString, setPathString] = useState<string>('');
-    const drawStarted: any= useRef();
-    const currentPaths: any= useRef([]);
 
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
             setPath(`M ${Math.round(x)} ${Math.round(y)}`);
-            drawStarted.current = true;
         } else if (isLast) {
             setCompletedPaths(state => [...completedPaths, pathString]);
-            if(currentPaths.current) {
-                currentPaths.current = [];
-            }
-            currentPaths.current.push(pathString);
-            drawStarted.current = false;
         } else {
             setPath(pathString+` L ${Math.round(x)} ${Math.round(y)}`)
         }
@@ -52,11 +47,23 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     useEffect(()=>{
         setEnable(props.enablePanZoom)
     },[props.enablePanZoom])
+    
     useEffect(()=>{
         setPathString('')
-    },[props.undo])
+    },[props.clear])
+
     useEffect(()=>{
-    },[currentPaths.current])
+        if(props.save) {
+            setTimeout(() => {
+                const image = ref.current?.makeImageSnapshot();
+                if (image) {
+                    const base64 = image.encodeToBase64();
+                    props.getBase64(base64)
+                }
+            }, 1000)
+        }
+    },[props.save])
+
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             let scaleFactor = {scaleHeight: 1, scaleWidth: 1};
@@ -103,11 +110,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     useEffect(()=>{
         getImageSize(imageUrl);
     },[imageCanvas])
-    const changeEnableState = (value: boolean) => {
-        setEnable(state => value)
-    }
     useEffect(()=>{
-        changeEnableState(props.enablePanZoom)
+        setEnable(state => props.enablePanZoom)
     },[props.enablePanZoom])
     return (
         <View style={styles.wrapper}>
@@ -132,19 +136,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         width={dimensions.imageWidth*dimensions.scaleFactor.scaleWidth}
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
-                    }
-                    { completedPaths.length>0 &&
-                        completedPaths.map((path: any,i: number) => (<>
-                            <Path
-                                key={uuid.v4() as string}
-                                path={path}
-                                color="white"
-                                style={'stroke'}
-                                strokeWidth={5}
-                                strokeJoin={'round'}
-                                antiAlias={true}
-                            />        
-                        </>))
                     }
                     {
                         pathString ?
