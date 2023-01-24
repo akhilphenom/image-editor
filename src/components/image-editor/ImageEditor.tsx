@@ -4,6 +4,8 @@ import { runOnJS, runOnUI } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler } from '@shopify/react-native-skia';
 import uuid from 'react-native-uuid';
+import { manipulateAsync, FlipType, SaveFormat } from 'expo-image-manipulator';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 type IProps = {
     imageUrl: string,
@@ -12,7 +14,7 @@ type IProps = {
     redo?: boolean,
     clear?: boolean,
     save?: boolean,
-    getBase64: Function
+    getFinalImage: Function
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
@@ -54,29 +56,34 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
 
     useEffect(()=>{
         if(props.save) {
-            setTimeout(() => {
+            const saveImage = async () => {
                 const image = ref.current?.makeImageSnapshot();
                 if (image) {
                     const base64 = image.encodeToBase64();
-                    props.getBase64(base64)
+                    let uri = `data:image/png;base64,${base64}`
+                    const manipResult = await manipulateAsync(
+                        uri, [
+                            {
+                                resize: {
+                                    height: dimensions.imageHeight,
+                                    width: dimensions.imageWidth
+                                } 
+                            }
+                        ], { compress: 1, format: SaveFormat.PNG }
+                    );
+                    props.getFinalImage(manipResult)
                 }
-            }, 1000)
+            }
+            saveImage();
         }
     },[props.save])
 
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
             let scaleFactor = {scaleHeight: 1, scaleWidth: 1};
-            if(height> width) {
-                scaleFactor = {
-                    ...scaleFactor,
-                    scaleHeight:screenHeight/height
-                }
-            } else {
-                scaleFactor = {
-                    ...scaleFactor,
-                    scaleWidth:screenWidth/width
-                }
+            scaleFactor = {
+                scaleHeight: screenWidth/width,
+                scaleWidth: screenWidth/width
             }
             setDimensions(state => ({
                 imageHeight: height,
@@ -88,7 +95,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             console.error(`Couldn't get the image size: ${error.message}`);
         });
     },[imageCanvas])
-    
+
     const touchHandler = useCallback(useTouchHandler({
         onStart: ({x,y}) => {
             runOnUI(createPath)(x,y,true,false);
@@ -125,12 +132,14 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 style={{ 
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
                     height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight, 
-                }} ref={ref}>
+                }} 
+                ref={ref}
+                >
                     { imageCanvas && 
                         <Image
                         key={'image'}
                         image={imageCanvas}
-                        fit="contain"
+                        fit='contain'
                         x={0}
                         y={0}
                         width={dimensions.imageWidth*dimensions.scaleFactor.scaleWidth}
@@ -142,7 +151,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         <Path
                             key={uuid.v4() as string}
                             path={pathString}
-                            color="white"
+                            color="red"
                             style={'stroke'}
                             strokeWidth={5}
                             strokeJoin={'round'}

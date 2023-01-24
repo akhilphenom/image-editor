@@ -1,10 +1,9 @@
-import { Alert, Share, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
 import React, { useState } from 'react'
 import { imageUrl } from '../data'
 import ImageEditor from '../components/image-editor/ImageEditor'
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar'
-
 
 enum ActionType {
     PALM = 'PALM',
@@ -23,21 +22,8 @@ const MainScreen = () => {
         clear: null,
         save: null,
     });
-    const [exportedImage, setExportedImage] = useState<string>('');
-    const getBase64 = async (base64:string) => {
-        base64 = `data:image/png;base64,${base64}`
-        setExportedImage(base64);
-        try {
-            const result = await Share.share({
-                message: 'React Native | A framework for building native apps using React',
-            });
-        if (result.action === Share.sharedAction) {
-            if (result.activityType) { } else { }
-        } else if (result.action === Share.dismissedAction) { }
-        } catch (error: any) {
-            Alert.alert(error.message);
-        }
-      
+    const getFinalImage = async (exportableImage: any) => {
+        console.log(exportableImage)
     }
     const handleAction = (context?: ActionType)=>{
         switch(context) {
@@ -100,11 +86,11 @@ const MainScreen = () => {
                 </TouchableOpacity>
             </View>
             <ImageEditor 
-            imageUrl={ exportedImage.length>0 ? exportedImage : imageUrl} 
+            imageUrl={imageUrl} 
             enablePanZoom={activeAction.palm} 
             save={activeAction.save}
             clear={activeAction.clear}
-            getBase64={getBase64}
+            getFinalImage={getFinalImage}
             ></ImageEditor>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}

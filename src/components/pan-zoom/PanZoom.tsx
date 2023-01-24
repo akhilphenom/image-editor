@@ -1,9 +1,8 @@
-import { StatusBar, StyleProp, StyleSheet, View } from 'react-native'
+import { StyleProp, StyleSheet, View } from 'react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { runOnJS, runOnUI, useAnimatedRef, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, runOnUI, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { NativeEvent } from 'react-native-reanimated/lib/types/lib/reanimated2/commonTypes';
-import { Skia, Path, SkPath } from '@shopify/react-native-skia';
 
 type IProps = {
     enable: boolean,
