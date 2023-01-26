@@ -1,11 +1,9 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react-native'
-import React, { FunctionComponent, useCallback, useEffect, useRef, useState } from 'react'
-import { runOnJS, runOnUI } from 'react-native-reanimated'
+import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { runOnJS } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler } from '@shopify/react-native-skia';
-import uuid from 'react-native-uuid';
-import { manipulateAsync, FlipType, SaveFormat } from 'expo-image-manipulator';
-import * as ImageManipulator from 'expo-image-manipulator';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 type IProps = {
     imageUrl: string,
@@ -54,6 +52,23 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         setPathString(state => state+path);
         currentPath.current = currentPath.current+path;
     },[pathString])
+
+    const CompletedPathsMemo = useMemo(()=>{
+        const CompletedList = () => (
+            currentPaths.current.map((path: any,i: number) => (<>
+                <Path
+                    key={i}
+                    path={path}
+                    color="white"
+                    style={'stroke'}
+                    strokeWidth={5}
+                    strokeJoin={'round'}
+                    antiAlias={true}
+                />        
+            </>))
+        );
+        return CompletedList;
+    },[currentPaths.current])
 
     useEffect(()=>{
         setEnable(props.enablePanZoom)
@@ -175,19 +190,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         height={dimensions.imageHeight*dimensions.scaleFactor.scaleHeight}
                         />
                     }
-                    { completedPaths.length>0 &&
-                        completedPaths.map((path: any,i: number) => (<>
-                            <Path
-                                key={i}
-                                path={path}
-                                color="white"
-                                style={'stroke'}
-                                strokeWidth={5}
-                                strokeJoin={'round'}
-                                antiAlias={true}
-                            />        
-                        </>))
-                    }
+                    { currentPaths.current.length>0 && <CompletedPathsMemo></CompletedPathsMemo> }
                     {
                         pathString ?
                         <Path
