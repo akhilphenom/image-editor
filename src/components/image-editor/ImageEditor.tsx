@@ -2,7 +2,7 @@ import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { runOnJS } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
-import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler } from '@shopify/react-native-skia';
+import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 type IProps = {
@@ -32,6 +32,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const currentPath: any = useRef('');
     const currentPaths: any = useRef([]);
     const undoStack: any = useRef([]);
+    const font: any= useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),32);
 
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
@@ -87,6 +88,14 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             setCompletedPaths(state => [...oldPaths])
         }
     },[props.undo])
+
+    useEffect(()=>{
+        if(font==null) {
+            console.log('null')
+        } else {
+            console.log('ggg');
+        }
+    },[font])
 
     useEffect(()=>{
         if(undoStack.current.length) {
@@ -203,6 +212,11 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                             antiAlias={true}
                         />      
                         : null  
+                    }
+                    {
+                        font && currentPaths.current.length>0 && currentPaths.current.map((_: any,i: any)=> (
+                            <Text key={i} text={'Hii'} font={font} x={100+i*10} y={100+i*10} color={'white'}></Text>
+                        ))
                     }
                 </Canvas>
             </PanZoom>
