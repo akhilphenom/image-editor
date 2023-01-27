@@ -5,6 +5,7 @@ import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaText, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Gesture, GestureDetector, PanGestureHandler, TextInput } from 'react-native-gesture-handler';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type IProps = {
     imageUrl: string,
@@ -14,12 +15,14 @@ type IProps = {
     clear?: boolean,
     save?: boolean,
     text?: boolean,
-    sendModalData?:Function,
-    getFinalImage: Function
+    getFinalImage: Function,
+    resetToolBar?: Function,
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const { imageUrl } = props;
+    const DEFAULT_TEXT_HEIGHT = 20;
+    const DEFAULT_FONT_SIZE = 32;
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
     const baseScale = useSharedValue(1);
@@ -37,21 +40,40 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         statusbarHeight: 0,
         scaleFactor: {scaleHeight: 1, scaleWidth: 1},
     });
+    const textComponentsRef = useRef<{
+        text: string,
+        position: {
+            x: number,
+            y: number
+        },
+        height: number,
+    }[]>([]);
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
     const [pathString, setPathString] = useState<string>('');
     const currentPath: any = useRef('');
     const currentPaths: any = useRef([]);
     const undoStack: any = useRef([]);
-    const font: any= useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),32);
+    const font: any= useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),DEFAULT_FONT_SIZE);
+    const variableText = useRef('');
+    const variableCoords = useSharedValue<{x:number,y:number}>({
+        x:0,
+        y:0
+    });
+    const [variableFontSize, setVariableFontSize] = useState<number>(DEFAULT_FONT_SIZE);
     const [modal,setModal] = useState<any>({
         currentText:{
-            text:''
+            text:'',
+            position: {
+                x: 0,
+                y: 0,
+            },
+            height: DEFAULT_TEXT_HEIGHT,
+            fontSize: variableFontSize,
         },
         showModal: false,
+        addingStage: true,
     })
-    const variableText = useRef('');
-
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
             setPath(`M ${Math.round(x)} ${Math.round(y)}`);
@@ -90,11 +112,20 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     },[currentPaths.current])
 
     useEffect(()=>{
+        if(font==null) {
+            console.log('Font for Skia is not Loaded')
+        } else {
+            console.log('Font for Skia is Loaded');
+        }
+    },[font])
+
+    useEffect(()=>{
         setEnable(props.enablePanZoom)
     },[props.enablePanZoom])
     
     useEffect(()=>{
-        setCompletedPaths(state => [])
+        setCompletedPaths(state => []);
+        currentPaths.current = [];
     },[props.clear])
 
     useEffect(()=>{
@@ -108,14 +139,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     },[props.undo])
 
     useEffect(()=>{
-        if(font==null) {
-            console.log('null')
-        } else {
-            console.log('ggg');
-        }
-    },[font])
-
-    useEffect(()=>{
         if(undoStack.current.length) {
             const latestPath = undoStack.current.pop();
             currentPaths.current.push(latestPath);
@@ -127,12 +150,14 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         if(props.text) {
             setModal((state: any) => ({
                 ...state,
-                showModal: true
+                showModal: true,
+                addingStage: false,
             }))
         } else {
             setModal((state: any) => ({
                 ...state,
-                showModal: false
+                showModal: false,
+                addingStage: false,
             }))
         }
     },[props.text])
@@ -160,6 +185,23 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             saveImage();
         }
     },[props.save])
+    
+    useEffect(()=>{
+        getImageSize(imageUrl);
+    },[imageCanvas])
+    
+    useEffect(()=>{
+        setEnable(state => props.enablePanZoom)
+        variableText.current='';
+    },[props.enablePanZoom])
+
+    useEffect(()=>{
+        Skia.Data.fromURI(imageUrl).then((data) => {
+            const canvasImage: any = Skia.Image.MakeImageFromEncoded(data)
+            setImageCanvas(canvasImage);
+            getImageSize(imageUrl);
+        });
+    },[]);
 
     const getImageSize = useCallback((imageUrl: string) => {
         ImageRN.getSize(imageUrl, (width, height) => {
@@ -195,14 +237,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     
     const onPinchEnd = useCallback((scale: any) => {
         const newScale = lastScale.value * scale
-        lastScale.value = newScale
-        // if (newScale > 1) {
-        //     isZoomedIn.value = true
-        //     baseScale.value = newScale
-        //     pinchScale.value = 1
-        //     runOnJS(onPanEnd)()
-        //     isPanGestureEnabled.value = true
-        // }
+        lastScale.value = newScale;
     },[baseScale, pinchScale, lastScale])
 
     const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {
@@ -213,16 +248,22 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         runOnJS(onPinchEnd)(scale)
     });
 
-    const panGesture = Gesture.Pan().onUpdate(({translationX, translationY, x, y})=>{
-        console.log(x,y)
+    const updateCoords = (x:number,y:number) => {
+        'worklet';
+        variableCoords.value = {x,y}
+    }
+
+    const panGesture = Gesture.Pan().onStart(()=>{
+        updateCoords(0,0)
+    }).onUpdate(({translationX, translationY, x, y})=>{
         currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
         currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
     }).onEnd(({translationX, translationY, x, y})=>{
         previousTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
         previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
-        // runOnJS(onPanEnd)()
+        updateCoords(currentTranslateX.value,currentTranslateY.value)
     }).onTouchesMove((_, state) => {
-        if (!enable || isPanGestureEnabled.value) {
+        if (isPanGestureEnabled.value) {
             state.activate()
         } else {
             state.fail()
@@ -241,17 +282,19 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         setModal((state: any) => ({
             ...state,
             showModal: false,
-            currentText: '',
+            addingStage: false,
+            currentText: null,
         }))
-        variableText.current=''
+        variableText.current='';
+        variableCoords.value={x:0,y:0};
     }
 
     const onSubmitText = () => {
         setModal((state: any) => ({
             ...state,
-            showModal: false
+            showModal: false,
+            addingStage: true,
         }))
-        props.sendModalData?.(variableText)
     }
 
     const onChangeText = (e: string) => {
@@ -261,19 +304,46 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         variableText.current=e;
     }
 
-    useEffect(()=>{
-        Skia.Data.fromURI(imageUrl).then((data) => {
-            const canvasImage: any = Skia.Image.MakeImageFromEncoded(data)
-            setImageCanvas(canvasImage);
-            getImageSize(imageUrl);
-        });
-    },[]);
-    useEffect(()=>{
-        getImageSize(imageUrl);
-    },[imageCanvas])
-    useEffect(()=>{
-        setEnable(state => props.enablePanZoom)
-    },[props.enablePanZoom])
+    const removeTextElement = () => {
+        setModal((state: any) => ({
+            ...state,
+            showModal: false,
+            addingStage: false,
+        }))
+        props.resetToolBar?.();
+    }
+
+    const addTextElement = () => {
+        setModal((state: any) => ({
+            ...state,
+            showModal: false,
+            addingStage: false,
+        }))
+        textComponentsRef.current.push({
+            text: variableText.current,
+            position: {
+                x: variableCoords.value.x,
+                y: variableCoords.value.y
+            },
+            height: DEFAULT_TEXT_HEIGHT
+        })
+        variableText.current = '';
+    }
+
+    const increaseFontSize = () => {
+        if(variableFontSize+2 >= 64) {
+            return;
+        }
+        setVariableFontSize(size => size+2);
+    }
+
+    const decreaseFontSize = () => {
+        if(variableFontSize-2 <=16) {
+            return;
+        }
+        setVariableFontSize(size => size-2);
+    }
+    
     return (
         <View style={styles.wrapper}>
             <PanZoom 
@@ -302,6 +372,18 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     }
                     { currentPaths.current.length>0 && <CompletedPathsMemo></CompletedPathsMemo> }
                     {
+                        font && textComponentsRef.current.length>0 && textComponentsRef.current.map((elem: any,i: any)=> (
+                            <SkiaText 
+                            key={i}
+                            text={elem.text} 
+                            font={font} 
+                            x={elem.position.x} 
+                            y={elem.position.y + (elem.height+10)} 
+                            color={'white'}>
+                            </SkiaText>
+                        ))
+                    }
+                    {
                         pathString ?
                         <Path
                             key={'currentPath'}
@@ -316,15 +398,14 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     }
                 </Canvas>
                 { props.text && <View style={{
-                    borderWidth:2, borderColor:'red',
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth,
                     height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight,
                     position: 'absolute',
                     backfaceVisibility: 'visible'
                 }}>
-                    { font && 
+                    { variableText.current.length>0 && 
                         <GestureDetector gesture={Gesture.Simultaneous(panGesture,pinchGesture)}>
-                            <Animated.Text style={[translateStyle]}>'Hello'</Animated.Text>
+                            <Animated.Text style={[translateStyle,{fontSize: variableFontSize}]}>{variableText.current}</Animated.Text>
                         </GestureDetector>
                     }
                 </View> }
@@ -334,7 +415,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                             <View style={{flex:1}}></View>
                             <TextInput
                                 onChangeText={onChangeText}
-                                multiline
                                 underlineColorAndroid="transparent"
                                 defaultValue={modal.currentText?.text}
                                 returnKeyType="done"
@@ -358,6 +438,26 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     </KeyboardAvoidingView>
                 </Modal>
             </PanZoom>
+            { modal.addingStage && <View style={styles.textSelection}>
+                <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => removeTextElement()}>
+                    <MaterialIcons name="close" size={28} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => addTextElement()}>
+                    <MaterialIcons name="done" size={28} color="white" />
+                </TouchableOpacity>
+            </View> }
+            { modal.addingStage && 
+            <View style={styles.textStyling}>
+                <View style={{marginHorizontal: 5}}>
+                    <Text style={{fontSize: 19, color: 'white'}}>Size</Text>
+                </View>
+                <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => increaseFontSize()}>
+                    <Ionicons name="add-circle-outline" size={32} color="white" />
+                </TouchableOpacity>
+                <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => decreaseFontSize()}>
+                    <Feather name="minus-circle" size={28} color="white" />
+                </TouchableOpacity>
+            </View> }
         </View>
     )
 }
@@ -393,4 +493,22 @@ const styles = StyleSheet.create({
         justifyContent:'space-between',
         width: '100%'
     },
+    textSelection: {
+        display: 'flex',
+        flexDirection: 'row',
+        width: '100%',
+        justifyContent:'center',
+        position: 'absolute',
+        bottom: 0
+    },
+    textStyling: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        position: 'absolute',
+        right: 10,
+        backgroundColor: 'rgba(255,255,255,0.4)',
+        borderRadius: 10,
+        paddingHorizontal: 5
+    }
 })

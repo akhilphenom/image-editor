@@ -24,18 +24,8 @@ const MainScreen = () => {
         save: null,
         text: null,
     });
-    const [textComponents,setTextComponents] = useState<string[]>([]);
-    const textComponentsRef = useRef<string[]>([]);
     const getFinalImage = async (exportableImage: any) => {
         console.log(exportableImage)
-    }
-    const receiveModalData = (e:any) => {
-        const value = e.current as string;
-        console.log(value);
-        if(value.length) {
-            textComponentsRef.current.push(value);
-            setTextComponents(state => [...state, value])
-        }
     }
     const handleAction = (context?: ActionType)=>{
         switch(context) {
@@ -53,7 +43,8 @@ const MainScreen = () => {
                     ...actions,
                     palm: true,
                     save: false,
-                    draw: false
+                    draw: false,
+                    text: false,
                 }))
                 break;
             case ActionType.TEXT :
@@ -122,12 +113,12 @@ const MainScreen = () => {
             redo={activeAction.redo}
             text={activeAction.text}
             getFinalImage={getFinalImage}
-            sendModalData={receiveModalData}
+            resetToolBar={() => handleAction(ActionType.PALM)}
             ></ImageEditor>
             <View style={styles.bar}>
                 <TouchableOpacity onPress={() => handleAction(ActionType.TEXT)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.text ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
-                    <MaterialCommunityIcons name="text" size={24} color={activeAction.text? 'white' : "black"} />
+                    <Ionicons name="text" size={24} color={activeAction.text? 'white' : "black"} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
