@@ -1,9 +1,10 @@
-import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar } from 'react-native'
+import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar, Text, Modal, KeyboardAvoidingView, TouchableOpacity, Platform } from 'react-native'
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { runOnJS } from 'react-native-reanimated'
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
-import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text, useFont } from '@shopify/react-native-skia';
+import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaText, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { Gesture, GestureDetector, PanGestureHandler, TextInput } from 'react-native-gesture-handler';
 
 type IProps = {
     imageUrl: string,
@@ -12,11 +13,21 @@ type IProps = {
     redo?: boolean,
     clear?: boolean,
     save?: boolean,
+    text?: boolean,
+    sendModalData?:Function,
     getFinalImage: Function
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const { imageUrl } = props;
+    const lastScale = useSharedValue(1);
+    const pinchScale = useSharedValue(1);
+    const baseScale = useSharedValue(1);
+    const previousTranslateX = useSharedValue(0);
+    const previousTranslateY = useSharedValue(0);
+    const currentTranslateX = useSharedValue(0);
+    const currentTranslateY = useSharedValue(0);
+    const isPanGestureEnabled = useSharedValue(false);
     const { width: screenWidth, height: screenHeight } = Dimensions.get('screen')
     const ref = useCanvasRef();
     const [imageCanvas,setImageCanvas] = useState();
@@ -33,6 +44,13 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const currentPaths: any = useRef([]);
     const undoStack: any = useRef([]);
     const font: any= useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),32);
+    const [modal,setModal] = useState<any>({
+        currentText:{
+            text:''
+        },
+        showModal: false,
+    })
+    const variableText = useRef('');
 
     const createPath = (x: number, y:number, isFirst: boolean, isLast: boolean) => {
         if(isFirst) {
@@ -106,6 +124,20 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     },[props.redo])
 
     useEffect(()=>{
+        if(props.text) {
+            setModal((state: any) => ({
+                ...state,
+                showModal: true
+            }))
+        } else {
+            setModal((state: any) => ({
+                ...state,
+                showModal: false
+            }))
+        }
+    },[props.text])
+
+    useEffect(()=>{
         if(props.save) {
             const saveImage = async () => {
                 const image = ref.current?.makeImageSnapshot();
@@ -159,7 +191,76 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         onEnd: ({x,y}) => {
             runOnJS(createPath)(x,y,false,true);
         }
-    }),[props.enablePanZoom])
+    }),[props.enablePanZoom,props.text])
+    
+    const onPinchEnd = useCallback((scale: any) => {
+        const newScale = lastScale.value * scale
+        lastScale.value = newScale
+        // if (newScale > 1) {
+        //     isZoomedIn.value = true
+        //     baseScale.value = newScale
+        //     pinchScale.value = 1
+        //     runOnJS(onPanEnd)()
+        //     isPanGestureEnabled.value = true
+        // }
+    },[baseScale, pinchScale, lastScale])
+
+    const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {
+        pinchScale.value = scale
+        isPanGestureEnabled.value = true
+    }).onEnd(({ scale }) => {
+        pinchScale.value = scale;
+        runOnJS(onPinchEnd)(scale)
+    });
+
+    const panGesture = Gesture.Pan().onUpdate(({translationX, translationY, x, y})=>{
+        console.log(x,y)
+        currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
+        currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
+    }).onEnd(({translationX, translationY, x, y})=>{
+        previousTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
+        previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
+        // runOnJS(onPanEnd)()
+    }).onTouchesMove((_, state) => {
+        if (!enable || isPanGestureEnabled.value) {
+            state.activate()
+        } else {
+            state.fail()
+        }
+    }).minDistance(0).minPointers(1).maxPointers(2);
+    
+    const translateStyle = useAnimatedStyle(() => ({
+        transform: [
+            { scale: baseScale.value * pinchScale.value },
+            { translateX: currentTranslateX.value },
+            { translateY: currentTranslateY.value },
+        ],
+    }));
+
+    const closeModal = () => {
+        setModal((state: any) => ({
+            ...state,
+            showModal: false,
+            currentText: '',
+        }))
+        variableText.current=''
+    }
+
+    const onSubmitText = () => {
+        setModal((state: any) => ({
+            ...state,
+            showModal: false
+        }))
+        props.sendModalData?.(variableText)
+    }
+
+    const onChangeText = (e: string) => {
+        if(!variableText.current.length) {
+            variableText.current = modal.currentText?.text ?? '';
+        }
+        variableText.current=e;
+    }
+
     useEffect(()=>{
         Skia.Data.fromURI(imageUrl).then((data) => {
             const canvasImage: any = Skia.Image.MakeImageFromEncoded(data)
@@ -180,7 +281,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             >
                 <Canvas
                 onTouch={
-                    props.enablePanZoom ? undefined : touchHandler
+                    (props.enablePanZoom || props.text) ? undefined : touchHandler
                 }
                 style={{ 
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth, 
@@ -213,12 +314,49 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                         />      
                         : null  
                     }
-                    {
-                        font && currentPaths.current.length>0 && currentPaths.current.map((_: any,i: any)=> (
-                            <Text key={i} text={'Hii'} font={font} x={100+i*10} y={100+i*10} color={'white'}></Text>
-                        ))
-                    }
                 </Canvas>
+                { props.text && <View style={{
+                    borderWidth:2, borderColor:'red',
+                    width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth,
+                    height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight,
+                    position: 'absolute',
+                    backfaceVisibility: 'visible'
+                }}>
+                    { font && 
+                        <GestureDetector gesture={Gesture.Simultaneous(panGesture,pinchGesture)}>
+                            <Animated.Text style={[translateStyle]}>'Hello'</Animated.Text>
+                        </GestureDetector>
+                    }
+                </View> }
+                <Modal visible={modal.showModal} transparent={true}>
+                    <KeyboardAvoidingView behavior={Platform.OS == 'ios'? 'padding': 'height'} style={{flex: 1,}}>
+                        <View style={styles.modalContentContainer}>
+                            <View style={{flex:1}}></View>
+                            <TextInput
+                                onChangeText={onChangeText}
+                                multiline
+                                underlineColorAndroid="transparent"
+                                defaultValue={modal.currentText?.text}
+                                returnKeyType="done"
+                                scrollEnabled={false}
+                                spellCheck={false}
+                                autoCorrect={false}
+                                style={[styles.textStyles]}
+                                placeholder={'Type something...'}
+                                placeholderTextColor={'white'}
+                            />
+                            <View style={{flex:1}}></View>
+                            <View style={styles.container}>
+                                <TouchableOpacity onPress={() => closeModal()}>
+                                    <Text style={[styles.confirmation, {color: 'red'}]}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => onSubmitText()}>
+                                    <Text style={styles.confirmation}>Done</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Modal>
             </PanZoom>
         </View>
     )
@@ -229,5 +367,30 @@ export default ImageEditor
 const styles = StyleSheet.create({
     wrapper: {
         flex: 1,
-    }
+    },
+    modalContentContainer: {
+        backgroundColor:"rgba(10,10,10,0.7)",
+        flex: 1,
+        display: 'flex',
+        paddingHorizontal: 10,
+        paddingVertical: 20
+    },
+    textStyles: {
+        color: '#fff',
+        fontSize: 24,
+        alignSelf:'center'
+    },
+    confirmation: {
+        color: 'white',
+        marginHorizontal: 10,
+        marginTop: 10,
+        fontSize: 19,
+    },
+    container: {
+        alignSelf:'flex-end',
+        display: 'flex',
+        flexDirection:'row',
+        justifyContent:'space-between',
+        width: '100%'
+    },
 })
