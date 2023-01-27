@@ -20,6 +20,11 @@ type IProps = {
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
+    const fonts: any= [
+        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),32),
+        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),34),
+        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),64),
+    ];
     const { imageUrl } = props;
     const DEFAULT_TEXT_HEIGHT = 20;
     const DEFAULT_FONT_SIZE = 32;
@@ -47,6 +52,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             y: number
         },
         height: number,
+        fontSize: number,
     }[]>([]);
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
@@ -69,7 +75,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 y: 0,
             },
             height: DEFAULT_TEXT_HEIGHT,
-            fontSize: variableFontSize,
         },
         showModal: false,
         addingStage: true,
@@ -325,8 +330,10 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 x: variableCoords.value.x,
                 y: variableCoords.value.y
             },
-            height: DEFAULT_TEXT_HEIGHT
+            height: DEFAULT_TEXT_HEIGHT,
+            fontSize: variableFontSize
         })
+        console.log(textComponentsRef.current)
         variableText.current = '';
     }
 
@@ -372,13 +379,13 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     }
                     { currentPaths.current.length>0 && <CompletedPathsMemo></CompletedPathsMemo> }
                     {
-                        font && textComponentsRef.current.length>0 && textComponentsRef.current.map((elem: any,i: any)=> (
+                        fonts && textComponentsRef.current.length>0 && textComponentsRef.current.map((item: any,i: any)=> (
                             <SkiaText 
                             key={i}
-                            text={elem.text} 
-                            font={font} 
-                            x={elem.position.x} 
-                            y={elem.position.y + (elem.height+10)} 
+                            text={item.text} 
+                            font={item.fontSize == 62? fonts[2]: fonts[0]} 
+                            x={item.position.x} 
+                            y={item.position.y + (item.height+10)} 
                             color={'white'}>
                             </SkiaText>
                         ))
