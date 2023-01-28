@@ -37,7 +37,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         52: useFont(assetMedium,52),
     }
     const { imageUrl } = props;
-    const DEFAULT_TEXT_HEIGHT = 20;
     const DEFAULT_FONT_SIZE = 32;
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
@@ -62,7 +61,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             x: number,
             y: number
         },
-        height: number,
         fontSize: number,
     }[]>([]);
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
@@ -84,7 +82,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 x: 0,
                 y: 0,
             },
-            height: DEFAULT_TEXT_HEIGHT,
         },
         showModal: false,
         addingStage: true,
@@ -319,10 +316,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 x: variableCoords.value.x,
                 y: variableCoords.value.y
             },
-            height: DEFAULT_TEXT_HEIGHT,
             fontSize: variableFontSize
         })
-        console.log(textComponentsRef.current)
         variableText.current = '';
     }
 
