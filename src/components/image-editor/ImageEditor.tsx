@@ -4,7 +4,7 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-nativ
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaText, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Gesture, GestureDetector, PanGestureHandler, TextInput } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, TextInput } from 'react-native-gesture-handler';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type IProps = {
@@ -20,11 +20,22 @@ type IProps = {
 }
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
-    const fonts: any= [
-        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),32),
-        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),34),
-        useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),64),
-    ];
+    const assetMedium = require('../../../assets/fonts/OpenSans-Medium.ttf')
+    const fonts: any= {
+        4: useFont(assetMedium,4),
+        8: useFont(assetMedium,8),
+        12: useFont(assetMedium,12),
+        16: useFont(assetMedium,16),
+        20: useFont(assetMedium,20),
+        24: useFont(assetMedium,24),
+        28: useFont(assetMedium,28),
+        32: useFont(assetMedium,32),
+        36: useFont(assetMedium,36),
+        40: useFont(assetMedium,40),
+        44: useFont(assetMedium,44),
+        48: useFont(assetMedium,48),
+        52: useFont(assetMedium,52),
+    }
     const { imageUrl } = props;
     const DEFAULT_TEXT_HEIGHT = 20;
     const DEFAULT_FONT_SIZE = 32;
@@ -60,7 +71,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const currentPath: any = useRef('');
     const currentPaths: any = useRef([]);
     const undoStack: any = useRef([]);
-    const font: any= useFont(require('../../../assets/fonts/OpenSans-Medium.ttf'),DEFAULT_FONT_SIZE);
     const variableText = useRef('');
     const variableCoords = useSharedValue<{x:number,y:number}>({
         x:0,
@@ -115,14 +125,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         );
         return CompletedList;
     },[currentPaths.current])
-
-    useEffect(()=>{
-        if(font==null) {
-            console.log('Font for Skia is not Loaded')
-        } else {
-            console.log('Font for Skia is Loaded');
-        }
-    },[font])
 
     useEffect(()=>{
         setEnable(props.enablePanZoom)
@@ -239,19 +241,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             runOnJS(createPath)(x,y,false,true);
         }
     }),[props.enablePanZoom,props.text])
-    
-    const onPinchEnd = useCallback((scale: any) => {
-        const newScale = lastScale.value * scale
-        lastScale.value = newScale;
-    },[baseScale, pinchScale, lastScale])
-
-    const pinchGesture = Gesture.Pinch().onUpdate(({ scale }) => {
-        pinchScale.value = scale
-        isPanGestureEnabled.value = true
-    }).onEnd(({ scale }) => {
-        pinchScale.value = scale;
-        runOnJS(onPinchEnd)(scale)
-    });
 
     const updateCoords = (x:number,y:number) => {
         'worklet';
@@ -338,17 +327,17 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     }
 
     const increaseFontSize = () => {
-        if(variableFontSize+2 >= 64) {
+        if(variableFontSize+4 > 52) {
             return;
         }
-        setVariableFontSize(size => size+2);
+        setVariableFontSize(size => size+4);
     }
 
     const decreaseFontSize = () => {
-        if(variableFontSize-2 <=16) {
+        if(variableFontSize-4 < 4) {
             return;
         }
-        setVariableFontSize(size => size-2);
+        setVariableFontSize(size => size-4);
     }
     
     return (
@@ -383,9 +372,9 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                             <SkiaText 
                             key={i}
                             text={item.text} 
-                            font={item.fontSize == 62? fonts[2]: fonts[0]} 
+                            font={fonts[item.fontSize]} 
                             x={item.position.x} 
-                            y={item.position.y + (item.height+10)} 
+                            y={item.position.y + (item.fontSize)} 
                             color={'white'}>
                             </SkiaText>
                         ))
@@ -411,7 +400,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     backfaceVisibility: 'visible'
                 }}>
                     { variableText.current.length>0 && 
-                        <GestureDetector gesture={Gesture.Simultaneous(panGesture,pinchGesture)}>
+                        <GestureDetector gesture={panGesture}>
                             <Animated.Text style={[translateStyle,{fontSize: variableFontSize}]}>{variableText.current}</Animated.Text>
                         </GestureDetector>
                     }
@@ -446,6 +435,17 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 </Modal>
             </PanZoom>
             { modal.addingStage && <View style={styles.textSelection}>
+                <View style={styles.textStyling}>
+                    <View style={{marginHorizontal: 5}}>
+                        <Text style={{fontSize: 19, color: 'white'}}>Size</Text>
+                    </View>
+                    <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => increaseFontSize()}>
+                        <Ionicons name="add-circle-outline" size={32} color="white" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => decreaseFontSize()}>
+                        <Feather name="minus-circle" size={28} color="white" />
+                    </TouchableOpacity>
+                </View>
                 <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => removeTextElement()}>
                     <MaterialIcons name="close" size={28} color="white" />
                 </TouchableOpacity>
@@ -453,18 +453,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     <MaterialIcons name="done" size={28} color="white" />
                 </TouchableOpacity>
             </View> }
-            { modal.addingStage && 
-            <View style={styles.textStyling}>
-                <View style={{marginHorizontal: 5}}>
-                    <Text style={{fontSize: 19, color: 'white'}}>Size</Text>
-                </View>
-                <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => increaseFontSize()}>
-                    <Ionicons name="add-circle-outline" size={32} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => decreaseFontSize()}>
-                    <Feather name="minus-circle" size={28} color="white" />
-                </TouchableOpacity>
-            </View> }
+            { modal.addingStage 
+             }
         </View>
     )
 }
