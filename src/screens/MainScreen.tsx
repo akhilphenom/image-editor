@@ -1,5 +1,5 @@
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { imageUrl } from '../data'
 import ImageEditor from '../components/image-editor/ImageEditor'
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ enum ActionType {
     REDO = 'REDO',
     CLEAR = 'CLEAR',
     SAVE = 'SAVE',
+    TEXT = 'TEXT',
 }
 const MainScreen = () => {
     const [activeAction, setActiveAction] = useState<any>({
@@ -21,6 +22,7 @@ const MainScreen = () => {
         redo: null,
         clear: null,
         save: null,
+        text: null,
     });
     const getFinalImage = async (exportableImage: any) => {
         console.log(exportableImage)
@@ -32,6 +34,7 @@ const MainScreen = () => {
                     ...actions,
                     palm: false,
                     save: false,
+                    text: false,
                     draw: true
                 }))
                 break;
@@ -40,7 +43,17 @@ const MainScreen = () => {
                     ...actions,
                     palm: true,
                     save: false,
-                    draw: false
+                    draw: false,
+                    text: false,
+                }))
+                break;
+            case ActionType.TEXT :
+                setActiveAction((actions: any) => ({
+                    ...actions,
+                    palm: false,
+                    draw: false,
+                    save: false,
+                    text: !activeAction.text
                 }))
                 break;
             case ActionType.UNDO :
@@ -98,9 +111,15 @@ const MainScreen = () => {
             clear={activeAction.clear}
             undo={activeAction.undo}
             redo={activeAction.redo}
+            text={activeAction.text}
             getFinalImage={getFinalImage}
+            resetToolBar={() => handleAction(ActionType.PALM)}
             ></ImageEditor>
             <View style={styles.bar}>
+                <TouchableOpacity onPress={() => handleAction(ActionType.TEXT)}
+                style={[styles.btnStyles,{backgroundColor: activeAction.text ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
+                    <Ionicons name="text" size={24} color={activeAction.text? 'white' : "black"} />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleAction(ActionType.DRAW)}
                 style={[styles.btnStyles,{backgroundColor: activeAction.draw ? 'dodgerblue': 'rgba(255,255,255,0.4)'}]}>
                     <MaterialCommunityIcons name="draw" size={24} color={activeAction.draw? 'white' : "black"} />
