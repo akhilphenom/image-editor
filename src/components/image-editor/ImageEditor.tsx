@@ -45,7 +45,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const previousTranslateY = useSharedValue(0);
     const currentTranslateX = useSharedValue(0);
     const currentTranslateY = useSharedValue(0);
-    const isPanGestureEnabled = useSharedValue(false);
     const { width: screenWidth, height: screenHeight } = Dimensions.get('screen')
     const ref = useCanvasRef();
     const [imageCanvas,setImageCanvas] = useState();
@@ -253,12 +252,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         previousTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
         previousTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
         updateCoords(currentTranslateX.value,currentTranslateY.value)
-    }).onTouchesMove((_, state) => {
-        if (isPanGestureEnabled.value) {
-            state.activate()
-        } else {
-            state.fail()
-        }
     }).minDistance(0).minPointers(1).maxPointers(2);
     
     const translateStyle = useAnimatedStyle(() => ({
