@@ -18,7 +18,10 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "buildNumber": "1",
+      "supportsTablet": true,
+      "usesIcloudStorage": true,
+      "bundleIdentifier": "com.akhilphenom.imageeditor"
     },
     "android": {
       "adaptiveIcon": {

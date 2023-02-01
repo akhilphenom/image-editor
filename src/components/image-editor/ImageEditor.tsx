@@ -1,6 +1,6 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar, Text, Modal, KeyboardAvoidingView, TouchableOpacity, Platform } from 'react-native'
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Animated, { interpolate, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue } from 'react-native-reanimated'
+import Animated, { color, interpolate, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaText, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
@@ -327,7 +327,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         ]
     }))
 
-    const handleKnob = Gesture.Pan().onUpdate(({y})=>{
+    const handleKnob = Gesture.Pan().onUpdate(({x,y})=>{
         currentKnob.value = y;
         const fontSize = interpolate(
             derivedKnob.value,
@@ -339,25 +339,23 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     
     const knobStyles = StyleSheet.create({
         fontScaleWrapper: {
-            height: '100%', 
             position: 'absolute',
-            right: 30,
-            paddingRight: 20,
+            right: MAX_LENGTH - 50,
+            bottom: -60,
+            transform: [
+                {rotate: '-90deg'}
+            ],
             justifyContent:'center',
             alignItems:'center',
-            flexDirection:'column'
+            flexDirection:'column',
         },
         invisible: {
             height: MAX_LENGTH,
-            width: 60,
-            borderColor: 'red',
-            borderWidth:2,
-            backgroundColor: 'rgba(255,255,255,0.1)',
+            width: 80,
+            backgroundColor: 'transparent',
             alignSelf: 'center',
-            transform: [
-                {rotate: '180deg'}
-            ],
-            position: 'relative'
+            position: 'relative',
+            top: 20
         },
         fontScale: {
             height: MAX_LENGTH,
@@ -375,6 +373,12 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             top: -9,
             right: -6.5,
             backgroundColor: 'dodgerblue'
+        },
+        fontStyle: {
+            color: 'white',
+            fontSize: 20,
+            transform: [{rotate: '90deg'}],
+            right: -3
         }
     })
 
@@ -481,6 +485,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             </View> }
             { modal.addingStage ?
                 <View style={[knobStyles.fontScaleWrapper]}>
+                    <Text style={knobStyles.fontStyle}>Size</Text>
                     <GestureHandlerRootView style={{flex:1}}>
                         <GestureDetector gesture={handleKnob}>
                             <Animated.View style={[knobStyles.invisible]}>
