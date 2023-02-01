@@ -9,6 +9,7 @@ type IProps = {
     style?: StyleProp<any>,
     contentContainerStyle?: StyleProp<any>,
     children?:any,
+    updateFocals?: Function
 }
 
 const PanZoom = (props: IProps) => {
@@ -95,8 +96,9 @@ const PanZoom = (props: IProps) => {
         }
     }, [zoomIn, zoomOut, isZoomedIn])
 
-    const onPinchEnd = useCallback((scale: any) => {
+    const onPinchEnd = useCallback((scale: number, focalX: number, focalY: number) => {
         const newScale = lastScale.value * scale
+        props.updateFocals?.({x: focalX/newScale, y: focalY/newScale});
         lastScale.value = newScale
         if (newScale > 1) {
             isZoomedIn.value = true
@@ -113,9 +115,9 @@ const PanZoom = (props: IProps) => {
         const pinchGesture = Gesture.Pinch().enabled(enable).onUpdate(({ scale }) => {
             pinchScale.value = scale
             isPanGestureEnabled.value = true
-        }).onEnd(({ scale }) => {
+        }).onEnd(({ scale, focalX, focalY }) => {
             pinchScale.value = scale;
-            runOnJS(onPinchEnd)(scale)
+            runOnJS(onPinchEnd)(scale, focalX, focalY)
         });
         const panGesture = Gesture.Pan().enabled(enable).onUpdate(({translationX, translationY, x, y})=>{
             currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
