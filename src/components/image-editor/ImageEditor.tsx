@@ -1,10 +1,10 @@
 import { Dimensions, StyleSheet, View, Image as ImageRN, StatusBar, Text, Modal, KeyboardAvoidingView, TouchableOpacity, Platform } from 'react-native'
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated'
+import Animated, { interpolate, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue } from 'react-native-reanimated'
 import PanZoom from '../pan-zoom/PanZoom';
 import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaText, useFont } from '@shopify/react-native-skia';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Gesture, GestureDetector, TextInput } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView, TextInput } from 'react-native-gesture-handler';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type IProps = {
@@ -38,6 +38,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     }
     const { imageUrl } = props;
     const DEFAULT_FONT_SIZE = 32;
+    const MAX_LENGTH = 240;
+    const KNOB_SIZE = 0;
     const lastScale = useSharedValue(1);
     const pinchScale = useSharedValue(1);
     const baseScale = useSharedValue(1);
@@ -45,6 +47,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const previousTranslateY = useSharedValue(0);
     const currentTranslateX = useSharedValue(0);
     const currentTranslateY = useSharedValue(0);
+    const currentKnob = useSharedValue(0);
     const { width: screenWidth, height: screenHeight } = Dimensions.get('screen')
     const ref = useCanvasRef();
     const [imageCanvas,setImageCanvas] = useState();
@@ -100,10 +103,10 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         }
     }
 
-    const setPath = useCallback((path: string) => {
+    const setPath = (path: string) => {
         setPathString(state => state+path);
         currentPath.current = currentPath.current+path;
-    },[pathString])
+    }
 
     const CompletedPathsMemo = useMemo(()=>{
         const CompletedList = () => (
@@ -226,15 +229,15 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
 
     const touchHandler = useCallback(useTouchHandler({
         onStart: ({x,y}) => {
-            runOnJS(createPath)(x,y,true,false);
+            createPath(x,y,true,false);
         },
         onActive: ({x,y,velocityX,velocityY}) => {
             if(velocityX || velocityY) {
-                runOnJS(createPath)(x,y,false,false);
+                createPath(x,y,false,false);
             }
         },
         onEnd: ({x,y}) => {
-            runOnJS(createPath)(x,y,false,true);
+            createPath(x,y,false,true);
         }
     }),[props.enablePanZoom,props.text])
 
@@ -314,20 +317,67 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         variableText.current = '';
     }
 
-    const increaseFontSize = () => {
-        if(variableFontSize+4 > 52) {
-            return;
-        }
-        setVariableFontSize(size => size+4);
-    }
+    const derivedKnob = useDerivedValue(()=>{
+        return Math.min( Math.max(currentKnob.value, 0), MAX_LENGTH - KNOB_SIZE );
+    })
 
-    const decreaseFontSize = () => {
-        if(variableFontSize-4 < 4) {
-            return;
-        }
-        setVariableFontSize(size => size-4);
-    }
+    const knobPosition = useAnimatedStyle(()=>({
+        transform: [
+            {translateY: derivedKnob.value}
+        ]
+    }))
+
+    const handleKnob = Gesture.Pan().onUpdate(({y})=>{
+        currentKnob.value = y;
+        const fontSize = interpolate(
+            derivedKnob.value,
+            [0, MAX_LENGTH],
+            [4, 52],
+        );
+        runOnJS(setVariableFontSize)((Math.floor(fontSize/4))*4);
+    })
     
+    const knobStyles = StyleSheet.create({
+        fontScaleWrapper: {
+            height: '100%', 
+            position: 'absolute',
+            right: 30,
+            paddingRight: 20,
+            justifyContent:'center',
+            alignItems:'center',
+            flexDirection:'column'
+        },
+        invisible: {
+            height: MAX_LENGTH,
+            width: 60,
+            borderColor: 'red',
+            borderWidth:2,
+            backgroundColor: 'rgba(255,255,255,0.1)',
+            alignSelf: 'center',
+            transform: [
+                {rotate: '180deg'}
+            ],
+            position: 'relative'
+        },
+        fontScale: {
+            height: MAX_LENGTH,
+            width: 5,
+            borderRadius: 2.5,
+            backgroundColor: 'white',
+            alignSelf: 'center',
+            position: 'relative'
+        },
+        knob: {
+            position: 'absolute',
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            top: -9,
+            right: -6.5,
+            backgroundColor: 'dodgerblue'
+        }
+    })
+
     return (
         <View style={styles.wrapper}>
             <PanZoom 
@@ -385,7 +435,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     width: dimensions.imageWidth*dimensions.scaleFactor.scaleWidth,
                     height: dimensions.imageHeight*dimensions.scaleFactor.scaleHeight,
                     position: 'absolute',
-                    backfaceVisibility: 'visible'
                 }}>
                     { variableText.current.length>0 && 
                         <GestureDetector gesture={panGesture}>
@@ -423,17 +472,6 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 </Modal>
             </PanZoom>
             { modal.addingStage && <View style={styles.textSelection}>
-                <View style={styles.textStyling}>
-                    <View style={{marginHorizontal: 5}}>
-                        <Text style={{fontSize: 19, color: 'white'}}>Size</Text>
-                    </View>
-                    <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => increaseFontSize()}>
-                        <Ionicons name="add-circle-outline" size={32} color="white" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={{marginHorizontal: 3}} onPress={() => decreaseFontSize()}>
-                        <Feather name="minus-circle" size={28} color="white" />
-                    </TouchableOpacity>
-                </View>
                 <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => removeTextElement()}>
                     <MaterialIcons name="close" size={28} color="white" />
                 </TouchableOpacity>
@@ -441,8 +479,20 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     <MaterialIcons name="done" size={28} color="white" />
                 </TouchableOpacity>
             </View> }
-            { modal.addingStage 
-             }
+            { modal.addingStage ?
+                <View style={[knobStyles.fontScaleWrapper]}>
+                    <GestureHandlerRootView style={{flex:1}}>
+                        <GestureDetector gesture={handleKnob}>
+                            <Animated.View style={[knobStyles.invisible]}>
+                                <Animated.View style={[knobStyles.fontScale]}>
+                                    <Animated.View style={[knobStyles.knob, knobPosition]}></Animated.View>
+                                </Animated.View>
+                            </Animated.View>
+                        </GestureDetector>
+                    </GestureHandlerRootView>
+                </View>
+            : null
+            }
         </View>
     )
 }
@@ -495,5 +545,5 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.4)',
         borderRadius: 10,
         paddingHorizontal: 5
-    }
+    },
 })
