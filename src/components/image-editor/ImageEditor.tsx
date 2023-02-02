@@ -30,9 +30,9 @@ const COLORS = [
     'rgba(255,165,0,0)',
     'rgba(0,0,0,0)',
     'rgba(100,100,100,0)',
-  ];
-  const { width } = Dimensions.get('window');
-  const PICKER_WIDTH = width * 0.9;
+];
+const { width } = Dimensions.get('window');
+const PICKER_WIDTH = width * 0.9;
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const assetMedium = require('../../../assets/fonts/OpenSans-Medium.ttf')
@@ -89,6 +89,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const undoStack: any = useRef([]);
     const variableText = useRef('');
     const [variableTextColor, setVariableTextColor] = useState<string>('white');
+    const rVariableColor = useSharedValue<number>(-1);
     const hexString = useRef<string>('#fff');
     const variableCoords = useSharedValue<{x:number,y:number}>({
         x:0,
@@ -264,9 +265,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         variableCoords.value = {x,y}
     }
 
-    const panGesture = Gesture.Pan().onStart(()=>{
-        updateCoords(0,0)
-    }).onUpdate(({translationX, translationY, x, y})=>{
+    const panGesture = Gesture.Pan().onUpdate(({translationX, translationY, x, y})=>{
         currentTranslateX.value = previousTranslateX.value + translationX/lastScale.value;
         currentTranslateY.value = previousTranslateY.value + translationY/lastScale.value;
     }).onEnd(({translationX, translationY, x, y})=>{
@@ -324,7 +323,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             showModal: false,
             addingStage: false,
         }))
-        const hexString = `#${(-pickedColor.value).toString(16)}`;
+        const hexString = `#${(pickedColor.value).toString(16)}`;
         textComponentsRef.current.push({
             text: variableText.current,
             position: {
@@ -348,14 +347,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     }))
 
     const rStyle = useAnimatedStyle(() => {
-        if(!pickedColor) {
-            return {
-                color: 'white'
-            };
-        }
-        const hexString = `#${(pickedColor.value).toString(16)}`;
         return {
-          color: hexString,
+          color: rVariableColor.value,
         };
     });
 
@@ -371,13 +364,12 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
 
     const pickedColor = useSharedValue<string | number>(COLORS[0]);
 
-    const onColorChanged = (color: string | number) => {
+    const onColorChanged = (e:any) => {
         'worklet';
-        pickedColor.value = color;
-        const colorHex = `#${color.toString(16)}`;
-        hexString.current = colorHex;
-        // runOnJS(changeVariableColor)(colorHex);
-        // console.log(hexString.current,'here');
+        const {bgColor, rBgColor} = e;
+        pickedColor.value = bgColor;
+        rVariableColor.value = rBgColor;
+        hexString.current = `#${bgColor.toString(16)}`;
     }
     
     const knobStyles = StyleSheet.create({
@@ -595,8 +587,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         alignItems: 'center',
-        // borderColor: 'red',
-        // borderWidth:2
     },
     textStyling: {
         display: 'flex',

@@ -13,7 +13,7 @@ import Animated, {
 
 interface ColorPickerProps extends LinearGradientProps {
   maxWidth: number;
-  onColorChanged?: (color: string | number) => void;
+  onColorChanged?: Function;
 }
 
 const CIRCLE_PICKER_SIZE = 24;
@@ -65,7 +65,7 @@ const ColorPicker: FunctionComponent<ColorPickerProps> = ({
             inputRange,
             COLORS
         );
-        onColorChanged?.(backgroundColor);
+        onColorChanged?.({bgColor: backgroundColor, rBgColor: internalBackgroundColor});
         return { backgroundColor: internalBackgroundColor };
     });
 
