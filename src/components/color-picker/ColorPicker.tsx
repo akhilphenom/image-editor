@@ -27,6 +27,17 @@ const ColorPicker: FunctionComponent<ColorPickerProps> = ({
   maxWidth,
   onColorChanged,
 }) => {
+    const COLORS = [
+        'red',
+        'purple',
+        'blue',
+        'cyan',
+        'green',
+        'yellow',
+        'orange',
+        'black',
+        'white',
+    ];
     const previousTranslateX = useSharedValue(0);
     const translateX = useSharedValue(0);
     const translateY = useSharedValue(0);
@@ -49,8 +60,13 @@ const ColorPicker: FunctionComponent<ColorPickerProps> = ({
             inputRange,
             colors
         );
+        const internalBackgroundColor = interpolateColor(
+            translateX.value,
+            inputRange,
+            COLORS
+        );
         onColorChanged?.(backgroundColor);
-        return { backgroundColor };
+        return { backgroundColor: internalBackgroundColor };
     });
 
     const gestures = useMemo(()=>{
@@ -78,7 +94,7 @@ const ColorPicker: FunctionComponent<ColorPickerProps> = ({
             <GestureDetector gesture={gestures}>
                 <Animated.View style={{ justifyContent: 'center' }}>
                     <LinearGradient
-                    colors={colors}
+                    colors={COLORS}
                     start={start}
                     end={end}
                     style={style}

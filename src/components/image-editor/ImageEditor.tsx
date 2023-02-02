@@ -21,15 +21,15 @@ type IProps = {
 }
 
 const COLORS = [
-    'red',
-    'purple',
-    'blue',
-    'cyan',
-    'green',
-    'yellow',
-    'orange',
-    'black',
-    'white',
+    'rgba(255,0,0,0)',
+    'rgba(119,0,200,0)',
+    'rgba(0,0,255,0)',
+    'rgba(0,100,100,0)',
+    'rgba(0,255,0,0)',
+    'rgba(255,255,0,0)',
+    'rgba(255,165,0,0)',
+    'rgba(0,0,0,0)',
+    'rgba(100,100,100,0)',
   ];
   const { width } = Dimensions.get('window');
   const PICKER_WIDTH = width * 0.9;
@@ -353,9 +353,9 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 color: 'white'
             };
         }
-        const hexString = `#${(-pickedColor.value).toString(16)}`;
+        const hexString = `#${(pickedColor.value).toString(16)}`;
         return {
-          color: (pickedColor.value),
+          color: hexString,
         };
     });
 
@@ -374,11 +374,10 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const onColorChanged = (color: string | number) => {
         'worklet';
         pickedColor.value = color;
-        console.log(color);
-        const colorHex = `#${(-color).toString(16)}`
-        // runOnJS(setVariableTextColor)(hexString);
+        const colorHex = `#${color.toString(16)}`;
         hexString.current = colorHex;
-        // console.log(hexString.current);
+        // runOnJS(changeVariableColor)(colorHex);
+        // console.log(hexString.current,'here');
     }
     
     const knobStyles = StyleSheet.create({
@@ -486,7 +485,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 }}>
                     { variableText.current.length>0 && 
                         <GestureDetector gesture={panGesture}>
-                            {<Animated.Text style={[translateStyle,{fontSize: variableFontSize},rStyle]}>{variableText.current}</Animated.Text>}
+                            {<Animated.Text style={[translateStyle,{fontSize: variableFontSize}, rStyle]}>{variableText.current}</Animated.Text>}
                         </GestureDetector>
                     }
                 </View> }
