@@ -6,6 +6,7 @@ import { Canvas, useCanvasRef, Image, Skia, Path, useTouchHandler, Text as SkiaT
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { Gesture, GestureDetector, GestureHandlerRootView, TextInput } from 'react-native-gesture-handler';
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { ColorPicker } from '../color-picker/ColorPicker';
 
 type IProps = {
     imageUrl: string,
@@ -18,6 +19,20 @@ type IProps = {
     getFinalImage: Function,
     resetToolBar?: Function,
 }
+
+const COLORS = [
+    'red',
+    'purple',
+    'blue',
+    'cyan',
+    'green',
+    'yellow',
+    'orange',
+    'black',
+    'white',
+  ];
+  const { width } = Dimensions.get('window');
+  const PICKER_WIDTH = width * 0.9;
 
 const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const assetMedium = require('../../../assets/fonts/OpenSans-Medium.ttf')
@@ -64,6 +79,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             y: number
         },
         fontSize: number,
+        color: string,
     }[]>([]);
     const [completedPaths, setCompletedPaths] = useState<string[]>([]);
     const [enable, setEnable] = useState(props.enablePanZoom);
@@ -72,6 +88,8 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
     const currentPaths: any = useRef([]);
     const undoStack: any = useRef([]);
     const variableText = useRef('');
+    const [variableTextColor, setVariableTextColor] = useState<string>('white');
+    const hexString = useRef<string>('#fff');
     const variableCoords = useSharedValue<{x:number,y:number}>({
         x:0,
         y:0
@@ -306,13 +324,15 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
             showModal: false,
             addingStage: false,
         }))
+        const hexString = `#${(-pickedColor.value).toString(16)}`;
         textComponentsRef.current.push({
             text: variableText.current,
             position: {
                 x: variableCoords.value.x,
                 y: variableCoords.value.y
             },
-            fontSize: variableFontSize
+            fontSize: variableFontSize,
+            color: hexString
         })
         variableText.current = '';
     }
@@ -327,6 +347,18 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         ]
     }))
 
+    const rStyle = useAnimatedStyle(() => {
+        if(!pickedColor) {
+            return {
+                color: 'white'
+            };
+        }
+        const hexString = `#${(-pickedColor.value).toString(16)}`;
+        return {
+          color: (pickedColor.value),
+        };
+    });
+
     const handleKnob = Gesture.Pan().onUpdate(({x,y})=>{
         currentKnob.value = y;
         const fontSize = interpolate(
@@ -336,12 +368,24 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
         );
         runOnJS(setVariableFontSize)((Math.floor(fontSize/4))*4);
     })
+
+    const pickedColor = useSharedValue<string | number>(COLORS[0]);
+
+    const onColorChanged = (color: string | number) => {
+        'worklet';
+        pickedColor.value = color;
+        console.log(color);
+        const colorHex = `#${(-color).toString(16)}`
+        // runOnJS(setVariableTextColor)(hexString);
+        hexString.current = colorHex;
+        // console.log(hexString.current);
+    }
     
     const knobStyles = StyleSheet.create({
         fontScaleWrapper: {
             position: 'absolute',
             right: MAX_LENGTH - 50,
-            bottom: -60,
+            bottom: -10,
             transform: [
                 {rotate: '-90deg'}
             ],
@@ -417,7 +461,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                             font={fonts[item.fontSize]} 
                             x={item.position.x} 
                             y={item.position.y + (item.fontSize)} 
-                            color={'white'}>
+                            color={item.color}>
                             </SkiaText>
                         ))
                     }
@@ -442,7 +486,7 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                 }}>
                     { variableText.current.length>0 && 
                         <GestureDetector gesture={panGesture}>
-                            <Animated.Text style={[translateStyle,{fontSize: variableFontSize}]}>{variableText.current}</Animated.Text>
+                            {<Animated.Text style={[translateStyle,{fontSize: variableFontSize},rStyle]}>{variableText.current}</Animated.Text>}
                         </GestureDetector>
                     }
                 </View> }
@@ -475,13 +519,24 @@ const ImageEditor: FunctionComponent<IProps> = (props: IProps) => {
                     </KeyboardAvoidingView>
                 </Modal>
             </PanZoom>
-            { modal.addingStage && <View style={styles.textSelection}>
-                <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => removeTextElement()}>
-                    <MaterialIcons name="close" size={28} color="white" />
-                </TouchableOpacity>
-                <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => addTextElement()}>
-                    <MaterialIcons name="done" size={28} color="white" />
-                </TouchableOpacity>
+            { modal.addingStage && <View style={styles.selection}>
+                <ColorPicker
+                colors={COLORS}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradient}
+                maxWidth={PICKER_WIDTH}
+                onColorChanged={onColorChanged}
+                />
+                <View style={{height: 20}}></View>
+                <View style={{flexDirection: 'row'}}>
+                    <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => removeTextElement()}>
+                        <MaterialIcons name="close" size={28} color="white" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={{marginHorizontal: 10}} onPress={() => addTextElement()}>
+                        <MaterialIcons name="done" size={28} color="white" />
+                    </TouchableOpacity>
+                </View>
             </View> }
             { modal.addingStage ?
                 <View style={[knobStyles.fontScaleWrapper]}>
@@ -533,13 +588,16 @@ const styles = StyleSheet.create({
         justifyContent:'space-between',
         width: '100%'
     },
-    textSelection: {
+    selection: {
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
         width: '100%',
         justifyContent:'center',
         position: 'absolute',
-        bottom: 0
+        bottom: 0,
+        alignItems: 'center',
+        // borderColor: 'red',
+        // borderWidth:2
     },
     textStyling: {
         display: 'flex',
@@ -549,6 +607,13 @@ const styles = StyleSheet.create({
         right: 10,
         backgroundColor: 'rgba(255,255,255,0.4)',
         borderRadius: 10,
-        paddingHorizontal: 5
+        paddingHorizontal: 5,
+        borderColor: 'red',
+        borderWidth:2
+    },
+    gradient: { 
+        height: 24, 
+        width: PICKER_WIDTH, 
+        borderRadius: 20,
     },
 })
